@@ -4,7 +4,7 @@ title: About
 permalink: /about/
 ---
 
-This is the git repository presenting the tutorials for the [Hedgehog](https://github.com/ABardakoff/hedgehog) library, designed to aid in creating task graphs for algorithms to obtain performance across CPUs and multiple co-processors.
+This is the git repository presenting the tutorials for the [Hedgehog](https://github.com/usnistgov/hedgehog) library, designed to aid in creating task graphs for algorithms to obtain performance across CPUs and multiple co-processors.
 
 # Credits
 

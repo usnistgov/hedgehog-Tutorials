@@ -2,7 +2,7 @@
 layout: home
 ---
 
-In this repository we present the tutorials for the [Hedgehog API](https://github.com/ABardakoff/hedgehog).
+In this repository we present the tutorials for the [Hedgehog API](https://github.com/usnistgov/hedgehog). The source code for the tutorials can be found [Here](https://github.com/usnistgov/hedgehog-Tutorials).
 
 # Content
 - [Dependencies](#dependencies)
@@ -13,7 +13,7 @@ In this repository we present the tutorials for the [Hedgehog API](https://githu
 - [Disclaimer](#disclaimer)
 
 # Dependencies
-- All tutorials depends on the [Hedgehog](https://github.com/ABardakoff/hedgehog) library, location is specified using: 
+- All tutorials depends on the [Hedgehog](https://github.com/usnistgov/hedgehog) library, location is specified using: 
 {% highlight cmake %}
 cmake -DHedgehog_INCLUDE_DIR=<dir>
 {% endhighlight %}
