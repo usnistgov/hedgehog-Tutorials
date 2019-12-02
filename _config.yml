@@ -24,7 +24,6 @@ description: >- # this means to ignore newlines until "baseurl:"
   for algorithms to obtain performance across CPUs and multiple co-processors.
   #baseurl: "hedgehog-Tutorials" # the subpath of your site, e.g. /blog
   baseurl: "" # the subpath of your site, e.g. /blog
-# baseurl: "hedgehog-Tutorials" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 show_downloads: true
 
