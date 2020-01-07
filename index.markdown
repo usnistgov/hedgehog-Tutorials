@@ -40,11 +40,11 @@ To use the Hedgehog API include the following header file:
 #include <hedgehog/hedgehog.h>
 ```
 # Tutorial contents
-- [Tutorial 1 - Graph and Task: Simple Hadamard product](tutorials/tutorial1)
-- [Tutorial 2 - Multiple inputs, State, State Manager: Hadamard product](tutorials/tutorial2)
-- [Tutorial 3 - Cycle resolution: CPU Matrix Multiplication](tutorials/tutorial3)
-- [Tutorial 4 - GPU Computation and memory management: GPU Matrix Multiplication](tutorials/tutorial4)
-- [Tutorial 5 - MultiGPU Computation and graph bunble: GPU Matrix Multiplication](tutorials/tutorial5)
+- [Tutorial 1 - Graph and Task: Simple Hadamard product](tutorials/tutorial1.html)
+- [Tutorial 2 - Multiple inputs, State, State Manager: Hadamard product](tutorials/tutorial2.html)
+- [Tutorial 3 - Cycle resolution: CPU Matrix Multiplication](tutorials/tutorial3.html)
+- [Tutorial 4 - GPU Computation and memory management: GPU Matrix Multiplication](tutorials/tutorial4.html)
+- [Tutorial 5 - MultiGPU Computation and graph bunble: GPU Matrix Multiplication](tutorials/tutorial5.html)
 
 The first tutorials are meant to demonstrate the usage of the Hedgehog API, and are not meant for obtaining performance. 
 
