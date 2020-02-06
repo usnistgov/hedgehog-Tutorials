@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
   using MatrixType = float;
 
   // Mersenne Twister Random Generator
-  uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  uint64_t timeSeed = std::chrono::system_clock::now().time_since_epoch().count();
   std::seed_seq ss{uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed >> (uint64_t) 32)};
   std::mt19937_64 rng(ss);
 
@@ -131,9 +131,9 @@ int main(int argc, char *argv[]) {
   testB = new MatrixType[m * p];
   testResult = new MatrixType[n * p];
 
-  std::for_each(testA, testA + (m*n), [&unif, &rng](MatrixType &val) { val = (MatrixType) unif(rng); });
-  std::for_each(testB, testB + (m*p), [&unif, &rng](MatrixType &val) { val = (MatrixType) unif(rng); });
-  std::for_each(testResult, testResult + (n*p), [&unif, &rng](MatrixType &val) { val = (MatrixType) unif(rng); });
+//  std::for_each(testA, testA + (m*n), [&unif, &rng](MatrixType &val) { val = (MatrixType) unif(rng); });
+//  std::for_each(testB, testB + (m*p), [&unif, &rng](MatrixType &val) { val = (MatrixType) unif(rng); });
+//  std::for_each(testResult, testResult + (n*p), [&unif, &rng](MatrixType &val) { val = (MatrixType) unif(rng); });
 
 
   std::cout << "n,m,p,blockSize,time(s),gflops" << std::endl;
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
   for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
     checkCudaErrors(cudaDeviceSynchronize());
 
-    auto begin = std::chrono::high_resolution_clock::now();
+    auto begin = std::chrono::system_clock::now();
 
     cublasXtHandle_t handle;
     checkCudaErrors(cublasXtCreate(&handle));
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
     checkCudaErrors(cublasXtDestroy(handle));
 
 
-    auto end = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count();
 
     std::cout

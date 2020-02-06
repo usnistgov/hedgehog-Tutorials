@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   constexpr Order Ord = Order::Row;
 
   // Mersenne Twister Random Generator
-  uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  uint64_t timeSeed = std::chrono::system_clock::now().time_since_epoch().count();
   std::seed_seq ss{uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed >> (uint64_t) 32)};
   std::mt19937_64 rng(ss);
 

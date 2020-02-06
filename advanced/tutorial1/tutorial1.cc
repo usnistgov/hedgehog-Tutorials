@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
   using MatrixType = float;
 
   // Mersenne Twister Random Generator
-  uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  uint64_t timeSeed = std::chrono::system_clock::now().time_since_epoch().count();
   std::seed_seq ss{uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed >> (uint64_t) 32)};
   std::mt19937_64 rng(ss);
 
@@ -365,7 +365,7 @@ int main(int argc, char *argv[]) {
     matrixMultiplicationGraph.addEdge(additionTask, stateManagerOutputBlock);
     matrixMultiplicationGraph.output(stateManagerOutputBlock);
 
-    auto begin = std::chrono::high_resolution_clock::now();
+    auto begin = std::chrono::system_clock::now();
 
 
     // Execute the graph
@@ -431,7 +431,7 @@ int main(int argc, char *argv[]) {
     // Wait for the graph to terminate
     matrixMultiplicationGraph.waitForTermination();
 
-    auto end = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count();
 
     runtimes.push_back(duration);
@@ -440,16 +440,16 @@ int main(int argc, char *argv[]) {
     std::cout
         << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
         computeMatrixMultiplicationGFLOPS(n, m, p, duration) << std::endl;
-    matrixMultiplicationGraph
-        .createDotFile(std::to_string(retryNum) + "AdvancedTutorial1.dot", hh::ColorScheme::EXECUTION,
-                       hh::StructureOptions::ALL);
+//    matrixMultiplicationGraph
+//        .createDotFile(std::to_string(retryNum) + "AdvancedTutorial1.dot", hh::ColorScheme::EXECUTION,
+//                       hh::StructureOptions::ALL);
 
   }
 
 
-  double avgRuntime = std::accumulate(runtimes.begin(), runtimes.end(), 0.0) / runtimes.size();
-
-  std::cout << "Avg: " << avgRuntime << ", " << computeMatrixMultiplicationGFLOPS(n, m, p, avgRuntime);
+//  double avgRuntime = std::accumulate(runtimes.begin(), runtimes.end(), 0.0) / runtimes.size();
+//
+//  std::cout << "Avg: " << avgRuntime << ", " << computeMatrixMultiplicationGFLOPS(n, m, p, avgRuntime);
 
 
   for (auto partialData : cMatrixData) {
