@@ -27,3 +27,17 @@ target_include_directories(advanced_tutorial1 PUBLIC
         ${CUDA_INCLUDE_DIRS})
 
 CUDA_ADD_CUBLAS_TO_TARGET(advanced_tutorial1)
+
+
+add_executable(advanced_tutorial1_baseline
+        tutorial1-baseline.cc)
+
+target_link_libraries(advanced_tutorial1_baseline
+        ${CUDA_LIBRARIES}
+        cuda)
+
+target_include_directories(advanced_tutorial1_baseline PUBLIC
+        ${CUDA_INCLUDE_DIRS})
+
+CUDA_ADD_CUBLAS_TO_TARGET(advanced_tutorial1_baseline)
+
