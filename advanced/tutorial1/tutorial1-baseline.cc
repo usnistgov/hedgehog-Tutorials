@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
 //  std::for_each(testResult, testResult + (n*p), [&unif, &rng](MatrixType &val) { val = (MatrixType) unif(rng); });
 
 
-  std::cout << "n,m,p,blockSize,time(s),gflops" << std::endl;
+  std::cout << "experiment,numGpus,n,m,p,blockSize,time(s),gflops" << std::endl;
 
   for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
     checkCudaErrors(cudaDeviceSynchronize());
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
     auto end = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count();
 
-    std::cout
+    std::cout << "cublasXT," << deviceIds.size() << ","
         << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
         computeMatrixMultiplicationGFLOPS(n, m, p, duration) << std::endl;
   }

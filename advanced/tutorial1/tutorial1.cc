@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  std::cout << "n,m,p,blockSize,time(s),gflops" << std::endl;
+  std::cout << "experiment,numGPUs, numThreadsProduct, numThreadsAddition n,m,p,blockSize,time(s),gflops" << std::endl;
 
   for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
     for (auto mat: aMatrixData) {
@@ -437,7 +437,7 @@ int main(int argc, char *argv[]) {
     runtimes.push_back(duration);
 
 
-    std::cout
+    std::cout << "hedgehogGPUMatMul," << deviceIds.size() << "," << numberThreadProduct << ","<< numberThreadAddition << ","
         << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
         computeMatrixMultiplicationGFLOPS(n, m, p, duration) << std::endl;
 //    matrixMultiplicationGraph
