@@ -428,11 +428,17 @@ int main(int argc, char *argv[]) {
 
       computeAndPrintAccuracyMatrixMultiplication<MatrixType>(testHedgehog, testResult, n, p);
 
+
     }
 
     // Wait for the graph to terminate
     matrixMultiplicationGraph.waitForTermination();
 
+    for (auto device :deviceIds) {
+      hh::checkCudaErrors(cudaSetDevice(device));
+      hh::checkCudaErrors(cudaDeviceSynchronize());
+    }
+    
     auto end = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count();
 
