@@ -231,7 +231,7 @@ int main(int argc, char *argv[]) {
 
   for (auto device :deviceIds)
   {
-    cudaSetDevice(device);
+    hh::checkCudaErrors(cudaSetDevice(device));
     hh::checkCudaErrors(cublasInit());
   }
 
@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  std::cout << "experiment,numGPUs, numThreadsProduct, numThreadsAddition n,m,p,blockSize,time(s),gflops" << std::endl;
+  std::cout << "experiment,numGPUs, numThreadsProduct, numThreadsAddition, n,m,p,blockSize,time(s),gflops" << std::endl;
 
   for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
     for (auto mat: aMatrixData) {
@@ -287,8 +287,10 @@ int main(int argc, char *argv[]) {
                                                                * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
     }
 
-    hh::checkCudaErrors(cudaDeviceSynchronize());
-
+    for (auto device :deviceIds) {
+      hh::checkCudaErrors(cudaSetDevice(device));
+      hh::checkCudaErrors(cudaDeviceSynchronize());
+    }
     if constexpr (isTestResults)
     {
 //      std::cout << "MatA" << std::endl;
@@ -451,6 +453,21 @@ int main(int argc, char *argv[]) {
 //
 //  std::cout << "Avg: " << avgRuntime << ", " << computeMatrixMultiplicationGFLOPS(n, m, p, avgRuntime);
 
+
+  for (auto mat: aMatrixData) {
+    hh::checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
+                                                               * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
+  }
+
+  for (auto mat: bMatrixData) {
+    hh::checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
+                                                               * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
+  }
+
+  for (auto device :deviceIds) {
+    hh::checkCudaErrors(cudaSetDevice(device));
+    hh::checkCudaErrors(cudaDeviceSynchronize());
+  }
 
   for (auto partialData : cMatrixData) {
     delete[] partialData->blockData();
