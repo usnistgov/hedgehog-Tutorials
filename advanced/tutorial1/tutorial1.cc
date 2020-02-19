@@ -433,12 +433,12 @@ int main(int argc, char *argv[]) {
 
     // Wait for the graph to terminate
     matrixMultiplicationGraph.waitForTermination();
-
+    hh::checkCudaErrors(cudaGetLastError());
     for (auto device :deviceIds) {
       hh::checkCudaErrors(cudaSetDevice(device));
       hh::checkCudaErrors(cudaDeviceSynchronize());
     }
-    
+
     auto end = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count();
 

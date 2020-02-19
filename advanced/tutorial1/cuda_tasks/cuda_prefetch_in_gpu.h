@@ -31,7 +31,7 @@ template <class MatrixType, char Id>
     hh::checkCudaErrors(cudaMemPrefetchAsync(managedMemory->blockData(), sizeof(MatrixType) * managedMemory->blockSizeHeight() * managedMemory->blockSizeWidth(), this->deviceId(), this->stream()));
 
     managedMemory->recordEvent(this->stream());
-
+    hh::checkCudaErrors(cudaGetLastError());
     this->addResult(managedMemory);
   }
 

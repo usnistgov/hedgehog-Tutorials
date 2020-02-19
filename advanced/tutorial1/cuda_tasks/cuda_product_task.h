@@ -65,10 +65,12 @@ class CudaProductTask : public hh::AbstractCUDATask<UnifiedMatrixBlockData<Type,
       exit(43);
     }
 
-    cudaMemPrefetchAsync(res->blockData(), sizeof(Type) * res->blockSizeHeight() * res->blockSizeWidth(), cudaCpuDeviceId, this->stream());
+    hh::checkCudaErrors(cudaMemPrefetchAsync(res->blockData(), sizeof(Type) * res->blockSizeHeight() * res->blockSizeWidth(), cudaCpuDeviceId, this->stream()));
 
 
     hh::checkCudaErrors(cudaStreamSynchronize(this->stream()));
+
+    hh::checkCudaErrors(cudaGetLastError());
 
     matA->returnToMemoryManager();
     matB->returnToMemoryManager();
