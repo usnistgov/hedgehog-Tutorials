@@ -548,6 +548,8 @@ int testUnifedMemory(int argc, char **argv) {
     for (auto ptr : pointers)
       hh::checkCudaErrors(cudaFree(ptr));
 
+    pointers.clear();
+
     hh::checkCudaErrors(cublasDestroy_v2(handle_));
     hh::checkCudaErrors(cudaStreamDestroy(stream_));
   }
