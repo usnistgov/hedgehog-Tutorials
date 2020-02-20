@@ -545,6 +545,10 @@ int testUnifedMemory(int argc, char **argv) {
     // [Do STUFF]
 
     for (auto ptr : pointers) {
+      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), cudaCpuDeviceId, stream_));
+    }
+
+    for (auto ptr : pointers) {
       hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), 0, stream_));
     }
 
