@@ -543,15 +543,30 @@ int testUnifedMemory(int argc, char **argv) {
       pointers.push_back(myBlockOfData);
     }
     // [Do STUFF]
+
     for (auto ptr : pointers) {
-      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), cudaCpuDeviceId));
+      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), 0, stream_));
     }
+
     for (auto ptr : pointers) {
-      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), 0));
+      Type alpha = 1.0;
+      Type beta = 1.0;
+      hh::checkCudaErrors(
+          cublasSgemm_v2(handle_, CUBLAS_OP_N, CUBLAS_OP_N,
+                         blockSize, blockSize, blockSize, &alpha,
+                         (float *) ptr, blockSize,
+                         (float *) ptr, blockSize, &beta,
+                         (float *) ptr, blockSize)
+      );
     }
+
+    for (auto ptr : pointers) {
+      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), cudaCpuDeviceId, stream_));
+    }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-    hh::checkCudaErrors(cudaDeviceSynchronize());
+    hh::checkCudaErrors(cudaStreamSynchronize(stream_));
 
     for (auto ptr : pointers) {
       std::memset(ptr, 9000, sizeof(Type) * blockSize * blockSize);
