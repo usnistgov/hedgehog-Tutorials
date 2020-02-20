@@ -39,7 +39,8 @@ class SizeConstraint : public TCLAP::Constraint<size_t> {
 
 template<class Type, char Id>
 std::shared_ptr<UnifiedMatrixBlockData<Type, Id>>
-allocateUnifiedMemory(size_t row, size_t col, size_t blockSize, std::uniform_real_distribution<Type> &unif, std::mt19937_64 &rng) {
+allocateUnifiedMemory(size_t row, size_t col, size_t blockSize, std::uniform_real_distribution<Type> &unif,
+                      std::mt19937_64 &rng) {
   Type *unifiedMem;
 
   hh::checkCudaErrors(cudaMallocManaged((void **) &unifiedMem, blockSize * blockSize * sizeof(Type)));
@@ -55,11 +56,11 @@ allocateUnifiedMemory(size_t row, size_t col, size_t blockSize, std::uniform_rea
 
 }
 
-template <class Type, char Id>
-void copyBlock(std::shared_ptr<MatrixBlockData<Type, Id, Order::Column>> input, Type *output, size_t ld)
-{
+template<class Type, char Id>
+void copyBlock(std::shared_ptr<MatrixBlockData<Type, Id, Order::Column>> input, Type *output, size_t ld) {
 
-  Type *outputLocation = &output[input->colIdx() * input->blockSizeWidth() * ld + input->rowIdx() * input->blockSizeHeight()];
+  Type *outputLocation = &output[input->colIdx() * input->blockSizeWidth() * ld +
+                                 input->rowIdx() * input->blockSizeHeight()];
 
   for (size_t col = 0; col < input->blockSizeWidth(); ++col) {
     std::copy_n(input->blockData() + col * input->blockSizeHeight(), input->blockSizeHeight(),
@@ -67,7 +68,7 @@ void copyBlock(std::shared_ptr<MatrixBlockData<Type, Id, Order::Column>> input, 
   }
 }
 
-template <class Type, char Id>
+template<class Type, char Id>
 void printBlock(std::shared_ptr<MatrixBlockData<Type, Id, Order::Column>> blk) {
   std::cout << "Block: " << blk->rowIdx() << ", " << blk->colIdx() << std::endl;
   for (size_t i = 0; i < blk->blockSizeHeight(); ++i) {
@@ -79,7 +80,7 @@ void printBlock(std::shared_ptr<MatrixBlockData<Type, Id, Order::Column>> blk) {
   std::cout << std::endl;
 }
 
-template <class Type>
+template<class Type>
 void printMatrix(Type *matrix, size_t numRows, size_t numCols) {
 
   for (size_t i = 0; i < numRows; ++i) {
@@ -101,8 +102,8 @@ void computeAndPrintAccuracyMatrixMultiplication(MatrixType *matrixCResult,
                                                  size_t n,
                                                  size_t p) {
   auto
-      *diff = new std::vector<MatrixType>(n*p, 0),
-      *accuracyComputation = new std::vector<MatrixType>(n*p, 0),
+      *diff = new std::vector<MatrixType>(n * p, 0),
+      *accuracyComputation = new std::vector<MatrixType>(n * p, 0),
       *sumBTRow = new std::vector<MatrixType>(p, 0);
 
   MatrixType
@@ -112,8 +113,7 @@ void computeAndPrintAccuracyMatrixMultiplication(MatrixType *matrixCResult,
   bool
       accurate = false;
 
-  for (size_t j = 0; j < p; ++j)
-  {
+  for (size_t j = 0; j < p; ++j) {
     for (size_t i = 0; i < n; ++i) {
       (*diff)[j * n + i] = std::fabs(matrixCBase[j * n + i] - matrixCResult[j * n + i]);;
     }
@@ -144,7 +144,7 @@ void computeAndPrintAccuracyMatrixMultiplication(MatrixType *matrixCResult,
   delete sumBTRow;
 }
 
-int main(int argc, char *argv[]) {
+int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
   using MatrixType = float;
 
   // Mersenne Twister Random Generator
@@ -181,9 +181,9 @@ int main(int argc, char *argv[]) {
 
   // test matrices
   MatrixType *testA,
-             *testB,
-             *testResult,
-             *testHedgehog;
+      *testB,
+      *testResult,
+      *testHedgehog;
 
   try {
     TCLAP::CmdLine cmd("Matrix Multiplication parameters", ' ', "0.1");
@@ -229,8 +229,7 @@ int main(int argc, char *argv[]) {
   } catch (TCLAP::ArgException &e)  // catch any exceptions
   { std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
 
-  for (auto device :deviceIds)
-  {
+  for (auto device :deviceIds) {
     hh::checkCudaErrors(cudaSetDevice(device));
     hh::checkCudaErrors(cublasInit());
   }
@@ -279,20 +278,19 @@ int main(int argc, char *argv[]) {
   for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
     for (auto mat: aMatrixData) {
       hh::checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
-                                                               * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
+                                                                 * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
     }
 
     for (auto mat: bMatrixData) {
       hh::checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
-                                                               * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
+                                                                 * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
     }
 
     for (auto device :deviceIds) {
       hh::checkCudaErrors(cudaSetDevice(device));
       hh::checkCudaErrors(cudaDeviceSynchronize());
     }
-    if constexpr (isTestResults)
-    {
+    if constexpr (isTestResults) {
 //      std::cout << "MatA" << std::endl;
       for (auto mat : aMatrixData) {
 //        printBlock<MatrixType, 'a'>(mat);
@@ -445,9 +443,10 @@ int main(int argc, char *argv[]) {
     runtimes.push_back(duration);
 
 
-    std::cout << "hedgehogGPUMatMul," << deviceIds.size() << "," << numberThreadProduct << ","<< numberThreadAddition << ","
-        << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
-        computeMatrixMultiplicationGFLOPS(n, m, p, duration) << std::endl;
+    std::cout << "hedgehogGPUMatMul," << deviceIds.size() << "," << numberThreadProduct << "," << numberThreadAddition
+              << ","
+              << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
+              computeMatrixMultiplicationGFLOPS(n, m, p, duration) << std::endl;
 //    matrixMultiplicationGraph
 //        .createDotFile(std::to_string(retryNum) + "AdvancedTutorial1.dot", hh::ColorScheme::EXECUTION,
 //                       hh::StructureOptions::ALL);
@@ -490,11 +489,60 @@ int main(int argc, char *argv[]) {
     partialData->blockData(nullptr);
   }
 
-  for (auto device :deviceIds)
-  {
+  for (auto device :deviceIds) {
     cudaSetDevice(device);
     hh::checkCudaErrors(cublasShutdown());
   }
+  return 1;
+}
+
+
+int testUnifedMemory(int argc, char **argv) {
+  using Type = float;
+  size_t
+      blockSize = 0,
+      numRetry = 1;
+
+  try {
+    TCLAP::CmdLine cmd("Test Unified memory parameters", ' ', "0.1");
+    SizeConstraint sc;
+    TCLAP::ValueArg<size_t> blockArg("b", "blocksize", "Block Size.", false, 3, &sc);
+    cmd.add(blockArg);
+    TCLAP::ValueArg<size_t> retryArg("r", "retry", "Number of retries.", false, 1, &sc);
+    cmd.add(retryArg);
+
+    cmd.parse(argc, argv);
+    numRetry = retryArg.getValue();
+    if (numRetry == 0) { numRetry = 1; }
+
+    blockSize = blockArg.getValue();
+    if (blockSize == 0) { blockSize = 1; }
+
+  } catch (TCLAP::ArgException &e)  // catch any exceptions
+  { std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
+
+  for (size_t i = 0; i < numRetry; ++i) {
+    float *myBlockOfData;
+    cudaStream_t stream_;
+    cublasHandle_t handle_;
+    hh::checkCudaErrors(cudaSetDevice(0));
+    hh::checkCudaErrors(cudaStreamCreate(&stream_));
+    hh::checkCudaErrors(cublasCreate_v2(&handle_));
+    hh::checkCudaErrors(cublasSetStream_v2(handle_, stream_));
+    hh::checkCudaErrors(cudaMallocManaged((void **) &myBlockOfData, sizeof(Type) * blockSize * blockSize));
+    // [Do STUFF]
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    // [Do STUFF]
+    hh::checkCudaErrors(cudaFree(myBlockOfData));
+    hh::checkCudaErrors(cublasDestroy_v2(handle_));
+    hh::checkCudaErrors(cudaStreamDestroy(stream_));
+  }
+  return 1;
+}
+
+int main(int argc, char *argv[]) {
+//  return matrixMultiplicationWithUnifiedMemory(argc, argv);
+  return testUnifedMemory(argc, argv);
 
 
 }

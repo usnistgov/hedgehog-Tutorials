@@ -39,6 +39,7 @@ if (OpenBLAS_FOUND)
 endif (OpenBLAS_FOUND)
 if (CUDA_FOUND)
 	add_subdirectory(tutorial4)
-	add_subdirectory(tutorial5)
+	add_subdirectory(tutorial5)ll
+
 	add_subdirectory(advanced/tutorial1)
 endif (CUDA_FOUND)
