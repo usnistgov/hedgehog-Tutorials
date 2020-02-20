@@ -526,7 +526,7 @@ int testUnifedMemory(int argc, char **argv) {
   } catch (TCLAP::ArgException &e)  // catch any exceptions
   { std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
 
-  std::vector<float *> pointers;
+  std::vector<Type *> pointers;
 
   for (size_t i = 0; i < numRetry; ++i) {
 
@@ -538,15 +538,26 @@ int testUnifedMemory(int argc, char **argv) {
     hh::checkCudaErrors(cublasSetStream_v2(handle_, stream_));
 
     for (size_t j = 0; j < amountOfMemory; ++j) {
-      float *myBlockOfData;
+      Type *myBlockOfData;
       hh::checkCudaErrors(cudaMallocManaged((void **) &myBlockOfData, sizeof(Type) * blockSize * blockSize));
       pointers.push_back(myBlockOfData);
     }
     // [Do STUFF]
+    for (auto ptr : pointers) {
+      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), cudaCpuDeviceId));
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    hh::checkCudaErrors(cudaDeviceSynchronize());
+
+    for (auto ptr : pointers) {
+      std::memset(ptr, 9000, sizeof(Type) * blockSize * blockSize);
+    }
+
     // [Do STUFF]
-    for (auto ptr : pointers)
+    for (auto ptr : pointers) {
       hh::checkCudaErrors(cudaFree(ptr));
+    }
 
     pointers.clear();
 
