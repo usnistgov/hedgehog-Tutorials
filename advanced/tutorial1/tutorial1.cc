@@ -596,19 +596,19 @@ int testUnifedMemory(int argc, char **argv) {
 }
 
 int main(int argc, char *argv[]) {
-//  return matrixMultiplicationWithUnifiedMemory(argc, argv);
+  return matrixMultiplicationWithUnifiedMemory(argc, argv);
 
-  std::thread t1(testUnifedMemory, argc, argv);
-  std::thread t2(testUnifedMemory, argc, argv);
-  std::thread t3(testUnifedMemory, argc, argv);
-  std::thread t4(testUnifedMemory, argc, argv);
+//  std::thread t1(testUnifedMemory, argc, argv);
+//  std::thread t2(testUnifedMemory, argc, argv);
+//  std::thread t3(testUnifedMemory, argc, argv);
+//  std::thread t4(testUnifedMemory, argc, argv);
 //  return testUnifedMemory(argc, argv);
 
-  t1.join();
-  t2.join();
-  t3.join();
-  t4.join();
+//  t1.join();
+//  t2.join();
+//  t3.join();
+//  t4.join();
 
-  return 0;
+//  return 0;
 
 }
