@@ -501,7 +501,8 @@ int testUnifedMemory(int argc, char **argv) {
   using Type = float;
   size_t
       blockSize = 0,
-      numRetry = 1;
+      numRetry = 1,
+      amountOfMemory = 0;
 
   try {
     TCLAP::CmdLine cmd("Test Unified memory parameters", ' ', "0.1");
@@ -510,9 +511,13 @@ int testUnifedMemory(int argc, char **argv) {
     cmd.add(blockArg);
     TCLAP::ValueArg<size_t> retryArg("r", "retry", "Number of retries.", false, 1, &sc);
     cmd.add(retryArg);
+    TCLAP::ValueArg<size_t> amountArg("a", "amount", "Amount of unified memory.", false, 1, &sc);
+    cmd.add(amountArg);
 
     cmd.parse(argc, argv);
     numRetry = retryArg.getValue();
+    amountOfMemory = amountArg.getValue();
+
     if (numRetry == 0) { numRetry = 1; }
 
     blockSize = blockArg.getValue();
@@ -521,19 +526,28 @@ int testUnifedMemory(int argc, char **argv) {
   } catch (TCLAP::ArgException &e)  // catch any exceptions
   { std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
 
+  std::vector<float *> pointers;
+
   for (size_t i = 0; i < numRetry; ++i) {
-    float *myBlockOfData;
+
     cudaStream_t stream_;
     cublasHandle_t handle_;
     hh::checkCudaErrors(cudaSetDevice(0));
     hh::checkCudaErrors(cudaStreamCreate(&stream_));
     hh::checkCudaErrors(cublasCreate_v2(&handle_));
     hh::checkCudaErrors(cublasSetStream_v2(handle_, stream_));
-    hh::checkCudaErrors(cudaMallocManaged((void **) &myBlockOfData, sizeof(Type) * blockSize * blockSize));
+
+    for (size_t j = 0; j < amountOfMemory; ++j) {
+      float *myBlockOfData;
+      hh::checkCudaErrors(cudaMallocManaged((void **) &myBlockOfData, sizeof(Type) * blockSize * blockSize));
+      pointers.push_back(myBlockOfData);
+    }
     // [Do STUFF]
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     // [Do STUFF]
-    hh::checkCudaErrors(cudaFree(myBlockOfData));
+    for (auto ptr : pointers)
+      hh::checkCudaErrors(cudaFree(ptr));
+
     hh::checkCudaErrors(cublasDestroy_v2(handle_));
     hh::checkCudaErrors(cudaStreamDestroy(stream_));
   }
