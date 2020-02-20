@@ -546,6 +546,9 @@ int testUnifedMemory(int argc, char **argv) {
     for (auto ptr : pointers) {
       hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), cudaCpuDeviceId));
     }
+    for (auto ptr : pointers) {
+      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), 0));
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     hh::checkCudaErrors(cudaDeviceSynchronize());
