@@ -572,6 +572,7 @@ int testUnifedMemory(int argc, char **argv) {
       for (size_t r = 0; r < blockSize*blockSize ; ++r) {
         ptr[r] = 9000.0f+r;
       }
+      std::cout << "ptr = " << ptr[0] << std::endl;
 //      std::memset(ptr, 9000, sizeof(Type) * blockSize * blockSize);
     }
 
