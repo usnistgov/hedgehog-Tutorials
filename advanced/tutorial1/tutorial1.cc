@@ -169,6 +169,8 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
       numberThreadAddition = 0,
       numRetry = 1;
 
+  bool restrictInputMemory = true;
+
   std::vector<int>
       deviceIds = {};
 
@@ -326,7 +328,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
     // GPU Graph
     auto cudaMatrixMultiplication = std::make_shared<UnifiedComputationGraph<MatrixType>>(n, m, p, blockSize,
-                                                                                          numberThreadProduct);
+                                                                                          numberThreadProduct, restrictInputMemory);
 
     // Execution Pipeline
     auto executionPipeline =
@@ -493,7 +495,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     cudaSetDevice(device);
     hh::checkCudaErrors(cublasShutdown());
   }
-  return 1;
+  return 0;
 }
 
 
@@ -592,7 +594,7 @@ int testUnifedMemory(int argc, char **argv) {
   }
 
   std::cout << "Finished test unified memory" << std::endl;
-  return 1;
+  return 0;
 }
 
 int main(int argc, char *argv[]) {

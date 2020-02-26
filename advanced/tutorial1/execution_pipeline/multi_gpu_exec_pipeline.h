@@ -10,7 +10,7 @@
 
 template<class MatrixType>
 class MultiGPUExecPipeline : public hh::AbstractExecutionPipeline<
-    UnifiedMatrixBlockData<MatrixType, 'p'>,
+    MatrixBlockData<MatrixType, 'p', Order::Column>,
     UnifiedMatrixBlockData<MatrixType, 'a'>,
     UnifiedMatrixBlockData<MatrixType, 'b'>> {
  private:
@@ -19,12 +19,12 @@ class MultiGPUExecPipeline : public hh::AbstractExecutionPipeline<
 
  public:
   MultiGPUExecPipeline(std::shared_ptr<
-      hh::Graph<UnifiedMatrixBlockData<MatrixType, 'p'>,
+      hh::Graph<MatrixBlockData<MatrixType, 'p', Order::Column>,
           UnifiedMatrixBlockData<MatrixType, 'a'>,
           UnifiedMatrixBlockData<MatrixType, 'b'>>> const &graph,
                        size_t const &numberGraphDuplications,
                        std::vector<int> const &deviceIds) : hh::AbstractExecutionPipeline<
-      UnifiedMatrixBlockData<MatrixType, 'p'>,
+      MatrixBlockData<MatrixType, 'p', Order::Column>,
       UnifiedMatrixBlockData<MatrixType, 'a'>,
       UnifiedMatrixBlockData<MatrixType, 'b'>>("Cuda Execution Pipeline",
                                                        graph,

@@ -16,11 +16,11 @@
 
 template<class MatrixType>
 class UnifiedComputationGraph : public hh::Graph<
-    UnifiedMatrixBlockData<MatrixType, 'p'>,
+    MatrixBlockData<MatrixType, 'p', Order::Column>,
     UnifiedMatrixBlockData<MatrixType, 'a'>, UnifiedMatrixBlockData<MatrixType, 'b'>> {
  public:
-  UnifiedComputationGraph(size_t n, size_t m, size_t p, size_t blockSize, size_t numberThreadProduct) :
-      hh::Graph<UnifiedMatrixBlockData<MatrixType, 'p'>,
+  UnifiedComputationGraph(size_t n, size_t m, size_t p, size_t blockSize, size_t numberThreadProduct, bool restrictInputMemory) :
+      hh::Graph<MatrixBlockData<MatrixType, 'p', Order::Column>,
           UnifiedMatrixBlockData<MatrixType, 'a'>,
           UnifiedMatrixBlockData<MatrixType, 'b'>>("GPU Computation Graph") {
 
@@ -35,21 +35,21 @@ class UnifiedComputationGraph : public hh::Graph<
     auto copyInBTask =
              std::make_shared<CudaPrefetchInGpu<MatrixType, 'b'>>(nBlocks);
     auto productTask =
-        std::make_shared<CudaProductTask<MatrixType>>(numberThreadProduct);
+        std::make_shared<CudaProductTask<MatrixType>>(blockSize, blockSize, numberThreadProduct);
 
     // MemoryManagers
     // Uses default constructor to not allocate memory as it is just going to manage the memory coming from main
     auto cudaMemoryManagerA =
-             std::make_shared<hh::StaticMemoryManager<UnifiedMatrixBlockData<MatrixType, 'a'>>>(nBlocks + 4);
+             std::make_shared<hh::StaticMemoryManager<UnifiedMatrixBlockData<MatrixType, 'a'>>>(restrictInputMemory ? nBlocks + 4 : nBlocks * mBlocks);
     auto cudaMemoryManagerB =
-        std::make_shared<hh::StaticMemoryManager<UnifiedMatrixBlockData<MatrixType, 'b'>>>(pBlocks + 4);
+        std::make_shared<hh::StaticMemoryManager<UnifiedMatrixBlockData<MatrixType, 'b'>>>(restrictInputMemory ? pBlocks + 4 : pBlocks * mBlocks);
 
     // Statically allocates group of memory
-    auto cudaMemoryManagerProduct =
-             std::make_shared<hh::StaticMemoryManager<UnifiedMatrixBlockData<MatrixType, 'p'>, size_t>>(8, blockSize);
+//    auto cudaMemoryManagerProduct =
+//             std::make_shared<hh::StaticMemoryManager<UnifiedMatrixBlockData<MatrixType, 'p'>, size_t>>(8, blockSize);
 
     // Connect the memory manager
-    productTask->connectMemoryManager(cudaMemoryManagerProduct);
+//    productTask->connectMemoryManager(cudaMemoryManagerProduct);
     copyInATask->connectMemoryManager(cudaMemoryManagerA);
     copyInBTask->connectMemoryManager(cudaMemoryManagerB);
 
