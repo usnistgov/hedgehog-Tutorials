@@ -490,11 +490,11 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
               << ","
               << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
               computeMatrixMultiplicationGFLOPS(n, m, p, duration) << "," << resultTimes[0] << "," << average << std::endl;
-//    matrixMultiplicationGraph
-//        .createDotFile(std::to_string(retryNum) + "AdvancedTutorial1.dot", hh::ColorScheme::EXECUTION,
-//                       hh::StructureOptions::ALL);
+    matrixMultiplicationGraph
+        .createDotFile(std::to_string(retryNum) + "AdvancedTutorial1- " + std::to_string(n) + "-" + std::to_string(blockSize) +  "-" + std::to_string(deviceIds.size()) + "-" + std::to_string(numberThreadProduct) + ".dot", hh::ColorScheme::EXECUTION,
+                       hh::StructureOptions::QUEUE);
 
-    runtimes.clear();
+    resultTimes.clear();
   }
 
 
@@ -541,118 +541,6 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 }
 
 
-int testUnifedMemory(int argc, char **argv) {
-  using Type = float;
-  size_t
-      blockSize = 0,
-      numRetry = 1,
-      amountOfMemory = 0;
-
-  try {
-    TCLAP::CmdLine cmd("Test Unified memory parameters", ' ', "0.1");
-    SizeConstraint sc;
-    TCLAP::ValueArg<size_t> blockArg("b", "blocksize", "Block Size.", false, 3, &sc);
-    cmd.add(blockArg);
-    TCLAP::ValueArg<size_t> retryArg("r", "retry", "Number of retries.", false, 1, &sc);
-    cmd.add(retryArg);
-    TCLAP::ValueArg<size_t> amountArg("a", "amount", "Amount of unified memory.", false, 1, &sc);
-    cmd.add(amountArg);
-
-    cmd.parse(argc, argv);
-    numRetry = retryArg.getValue();
-    amountOfMemory = amountArg.getValue();
-
-    if (numRetry == 0) { numRetry = 1; }
-
-    blockSize = blockArg.getValue();
-    if (blockSize == 0) { blockSize = 1; }
-
-  } catch (TCLAP::ArgException &e)  // catch any exceptions
-  { std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
-
-  std::vector<Type *> pointers;
-
-  for (size_t i = 0; i < numRetry; ++i) {
-
-    cudaStream_t stream_;
-    cublasHandle_t handle_;
-    hh::checkCudaErrors(cudaSetDevice(0));
-    hh::checkCudaErrors(cudaStreamCreate(&stream_));
-    hh::checkCudaErrors(cublasCreate_v2(&handle_));
-    hh::checkCudaErrors(cublasSetStream_v2(handle_, stream_));
-
-    for (size_t j = 0; j < amountOfMemory; ++j) {
-      Type *myBlockOfData;
-      hh::checkCudaErrors(cudaMallocManaged((void **) &myBlockOfData, sizeof(Type) * blockSize * blockSize));
-      pointers.push_back(myBlockOfData);
-    }
-    // [Do STUFF]
-
-    for (auto ptr : pointers) {
-      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), cudaCpuDeviceId, stream_));
-    }
-
-    for (auto ptr : pointers) {
-      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), 0, stream_));
-    }
-
-    for (auto ptr : pointers) {
-      Type alpha = 1.0;
-      Type beta = 1.0;
-      hh::checkCudaErrors(
-          cublasSgemm_v2(handle_, CUBLAS_OP_N, CUBLAS_OP_N,
-                         blockSize, blockSize, blockSize, &alpha,
-                         (float *) ptr, blockSize,
-                         (float *) ptr, blockSize, &beta,
-                         (float *) ptr, blockSize)
-      );
-    }
-
-    for (auto ptr : pointers) {
-      hh::checkCudaErrors(cudaMemPrefetchAsync(ptr, blockSize * blockSize * sizeof(Type), cudaCpuDeviceId, stream_));
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-    hh::checkCudaErrors(cudaStreamSynchronize(stream_));
-
-    for (auto ptr : pointers) {
-      for (size_t r = 0; r < blockSize*blockSize ; ++r) {
-        ptr[r] = 9000.0f+r;
-      }
-      std::cout << "ptr = " << ptr[0] << std::endl;
-//      std::memset(ptr, 9000, sizeof(Type) * blockSize * blockSize);
-    }
-
-    // [Do STUFF]
-    for (auto ptr : pointers) {
-      hh::checkCudaErrors(cudaFree(ptr));
-    }
-
-    pointers.clear();
-
-    hh::checkCudaErrors(cublasDestroy_v2(handle_));
-    hh::checkCudaErrors(cudaStreamDestroy(stream_));
-  }
-
-  std::cout << "Finished test unified memory" << std::endl;
-  return 0;
-}
-
 int main(int argc, char *argv[]) {
   return matrixMultiplicationWithUnifiedMemory(argc, argv);
-
-//  std::thread t1(testUnifedMemory, argc, argv);
-//  std::thread t2(testUnifedMemory, argc, argv);
-//  std::thread t3(testUnifedMemory, argc, argv);
-//  std::thread t4(testUnifedMemory, argc, argv);
-//  return testUnifedMemory(argc, argv);
-
-//  t1.join();
-//  t2.join();
-//  t3.join();
-//  t4.join();
-
-//  return 0;
-
 }
