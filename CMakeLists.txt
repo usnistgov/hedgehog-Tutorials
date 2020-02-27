@@ -16,6 +16,8 @@ find_package(OpenBLAS QUIET)
 
 # Cuda
 find_package(CUDA QUIET)
+find_package(NVTX QUIET)
+
 if (CUDA_FOUND)
 	message(STATUS "CUDA found")
 	set(CUDA_PROPAGATE_HOST_FLAGS OFF)
