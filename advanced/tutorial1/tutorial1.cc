@@ -169,7 +169,11 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
       numberThreadAddition = 0,
       numRetry = 1;
 
+  bool innerTraversal = false;
   bool restrictInputMemory = true;
+
+  std::vector<double>
+      resultTimes = {};
 
   std::vector<int>
       deviceIds = {};
@@ -207,6 +211,10 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     TCLAP::MultiArg<int> deviceIdsArg(
         "d", "deviceids", "List of device Ids in which the computation will be decomposed.", false, "integer");
     cmd.add(deviceIdsArg);
+    TCLAP::SwitchArg traversalArg("i", "inner-traversal", "Uses inner-traversal. Matrices should fit into GPU memory.", false);
+    cmd.add(traversalArg);
+
+
 
     cmd.parse(argc, argv);
 
@@ -216,6 +224,9 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     numberThreadAddition = additionArg.getValue();
     numberThreadProduct = productArg.getValue();
     numRetry = retryArg.getValue();
+    innerTraversal = traversalArg.getValue();
+
+    restrictInputMemory = !innerTraversal;
 
     blockSize = blockArg.getValue();
     if (blockSize == 0) { blockSize = 1; }
@@ -249,15 +260,34 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
 
   // Allocate blocks and setup traversal
-  for (size_t j = 0; j < mBlocks; ++j) {
+  if (innerTraversal) {
     for (size_t i = 0; i < nBlocks; ++i) {
-      aMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'a'>(i, j, blockSize, unif, rng));
+      for (size_t j = 0; j < mBlocks; ++j) {
+        aMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'a'>(i, j, blockSize, unif, rng));
+      }
+    }
+  }
+  else
+  {
+    for (size_t j = 0; j < mBlocks; ++j) {
+      for (size_t i = 0; i < nBlocks; ++i) {
+        aMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'a'>(i, j, blockSize, unif, rng));
+      }
     }
   }
 
-  for (size_t i = 0; i < mBlocks; ++i) {
+  if (innerTraversal) {
     for (size_t j = 0; j < pBlocks; ++j) {
-      bMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'b'>(i, j, blockSize, unif, rng));
+      for (size_t i = 0; i < mBlocks; ++i) {
+        bMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'b'>(i, j, blockSize, unif, rng));
+      }
+    }
+  }
+  else {
+    for (size_t i = 0; i < mBlocks; ++i) {
+      for (size_t j = 0; j < pBlocks; ++j) {
+        bMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'b'>(i, j, blockSize, unif, rng));
+      }
     }
   }
 
@@ -275,7 +305,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     }
   }
 
-  std::cout << "experiment,numGPUs, numThreadsProduct, numThreadsAddition, n,m,p,blockSize,time(s),gflops" << std::endl;
+  std::cout << "experiment,numGPUs, numThreadsProduct, numThreadsAddition, n,m,p,blockSize,time(s),gflops,first,avg" << std::endl;
 
   for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
     for (auto mat: aMatrixData) {
@@ -388,6 +418,15 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
     // Notify push done
     matrixMultiplicationGraph.finishPushingData();
+    auto startFirstItem = std::chrono::high_resolution_clock::now();
+    while (auto res = matrixMultiplicationGraph.getBlockingResult()) {
+      auto endFirstItem = std::chrono::high_resolution_clock::now();
+      auto durationItem =
+          std::chrono::duration_cast<std::chrono::duration<double>>(endFirstItem - startFirstItem).count();
+      resultTimes.push_back(durationItem);
+      startFirstItem = std::chrono::high_resolution_clock::now();
+    }
+
 
     if constexpr (isTestResults) {
       while (auto res = matrixMultiplicationGraph.getBlockingResult()) {
@@ -441,6 +480,8 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
     auto end = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count();
+    double average = std::accumulate(resultTimes.begin(), resultTimes.end(), 0.0) / resultTimes.size();
+
 
     runtimes.push_back(duration);
 
@@ -448,11 +489,12 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     std::cout << "hedgehogGPUMatMul," << deviceIds.size() << "," << numberThreadProduct << "," << numberThreadAddition
               << ","
               << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
-              computeMatrixMultiplicationGFLOPS(n, m, p, duration) << std::endl;
+              computeMatrixMultiplicationGFLOPS(n, m, p, duration) << "," << resultTimes[0] << "," << average << std::endl;
 //    matrixMultiplicationGraph
 //        .createDotFile(std::to_string(retryNum) + "AdvancedTutorial1.dot", hh::ColorScheme::EXECUTION,
 //                       hh::StructureOptions::ALL);
 
+    runtimes.clear();
   }
 
 
