@@ -41,3 +41,8 @@ target_include_directories(advanced_tutorial1_baseline PUBLIC
 
 CUDA_ADD_CUBLAS_TO_TARGET(advanced_tutorial1_baseline)
 
+if (NVTX_FOUND)
+    target_include_directories(advanced_tutorial1 PUBLIC ${NVTX_INCLUDE_DIR})
+    target_link_libraries(advanced_tutorial1 ${NVTX_LIBRARIES})
+    target_compile_definitions(advanced_tutorial1 PUBLIC -DHH_USE_NVTX)
+endif()
