@@ -491,7 +491,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
               << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
               computeMatrixMultiplicationGFLOPS(n, m, p, duration) << "," << resultTimes[0] << "," << average << std::endl;
     matrixMultiplicationGraph
-        .createDotFile(std::to_string(retryNum) + "AdvancedTutorial1- " + std::to_string(n) + "-" + std::to_string(blockSize) +  "-" + std::to_string(deviceIds.size()) + "-" + std::to_string(numberThreadProduct) + ".dot", hh::ColorScheme::EXECUTION,
+        .createDotFile("AdvancedTutorial1-" + std::to_string(innerTraversal) + "-" + std::to_string(n) + "-" + std::to_string(blockSize) +  "-" + std::to_string(deviceIds.size()) + "-" + std::to_string(numberThreadProduct) + "-" + std::to_string(retryNum) +  ".dot", hh::ColorScheme::EXECUTION,
                        hh::StructureOptions::QUEUE);
 
     resultTimes.clear();
