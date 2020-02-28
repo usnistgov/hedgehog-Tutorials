@@ -8,29 +8,20 @@
 #include "../data/unified_matrix_block_data.h"
 
 template <class Type>
-class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', Order::Column>, std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>> {
+class CudaProductTask : public hh::AbstractCUDATask<UnifiedMatrixBlockData<Type, 'p'>, std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>> {
  private:
   cublasHandle_t handle_ = {};
-  Type *tempGpuResult_;
-  size_t blockSizeHeight_;
-  size_t blockSizeWidth_;
 
  public:
-  explicit CudaProductTask(size_t blockSizeHeight, size_t blockSizeWidth, size_t numberThreads = 1) :
-  hh::AbstractCUDATask<
-      MatrixBlockData<Type, 'p', Order::Column>,
-          std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>>("CUDA Product Task", numberThreads, false, true),
-          blockSizeHeight_(blockSizeHeight), blockSizeWidth_(blockSizeWidth) {}
+  explicit CudaProductTask(size_t numberThreads = 1) : hh::AbstractCUDATask<UnifiedMatrixBlockData<Type, 'p'>, std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>>("CUDA Product Task", numberThreads, false, false) {}
 
   void initializeCuda() override {
     checkCudaErrors(cublasCreate_v2(&handle_));
     checkCudaErrors(cublasSetStream_v2(handle_, this->stream()));
-    checkCudaErrors(cudaMallocManaged((void **)&tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_));
   }
 
   void shutdownCuda() override {
     checkCudaErrors(cublasDestroy_v2(handle_));
-    checkCudaErrors(cudaFree(tempGpuResult_));
   }
 
   void execute(std::shared_ptr<std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>> ptr) override {
@@ -39,19 +30,16 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
 
     auto matA = ptr->first;
     auto matB = ptr->second;
-//    auto res = this->getManagedMemory();
+    auto res = this->getManagedMemory();
 
-//    res->rowIdx(matA->rowIdx());
-//    res->colIdx(matB->colIdx());
-//    res->blockSizeHeight(matA->blockSizeHeight());
-//    res->blockSizeWidth(matB->blockSizeWidth());
-//    res->leadingDimension(matA->blockSizeHeight());
-//    res->ttl(1);
+    res->rowIdx(matA->rowIdx());
+    res->colIdx(matB->colIdx());
+    res->blockSizeHeight(matA->blockSizeHeight());
+    res->blockSizeWidth(matB->blockSizeWidth());
+    res->leadingDimension(matA->blockSizeHeight());
+    res->ttl(1);
 
-    checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, this->deviceId(), this->stream()));
-
-    Type *resultData = new Type[matA->blockSizeHeight() * matB->blockSizeWidth()];
-    auto res = std::make_shared<MatrixBlockData<Type, 'p', Order::Column>>(matA->rowIdx(), matB->colIdx(), matA->blockSizeHeight(), matB->blockSizeWidth(), resultData, resultData);
+    checkCudaErrors(cudaMemPrefetchAsync(res->blockData(), sizeof(Type) * res->blockSizeHeight() * res->blockSizeWidth(), this->deviceId(), this->stream()));
 
     matA->synchronizeEvent();
     matB->synchronizeEvent();
@@ -62,7 +50,7 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
                          matA->blockSizeHeight(), matB->blockSizeWidth(), matA->blockSizeWidth(), &alpha,
                          (float *) matA->blockData(), matA->leadingDimension(),
                          (float *) matB->blockData(), matB->leadingDimension(), &beta,
-                         (float *) tempGpuResult_, blockSizeHeight_)
+                         (float *) res->blockData(), res->leadingDimension())
       );
     } else if (std::is_same<Type, double>::value) {
       checkCudaErrors(
@@ -70,30 +58,31 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
                          matA->blockSizeHeight(), matB->blockSizeWidth(), matA->blockSizeWidth(), &alpha,
                          (double *) matA->blockData(), matA->leadingDimension(),
                          (double *) matB->blockData(), matB->leadingDimension(), &beta,
-                         (double *) tempGpuResult_, blockSizeHeight_)
+                         (double *) res->blockData(), res->leadingDimension())
       );
     } else {
       std::cerr << "The matrix can't be multiplied" << std::endl;
       exit(43);
     }
 
-    checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, cudaCpuDeviceId, this->stream()));
-
     checkCudaErrors(cudaStreamSynchronize(this->stream()));
 
     matA->returnToMemoryManager();
     matB->returnToMemoryManager();
 
-    std::copy(tempGpuResult_, tempGpuResult_ + blockSizeWidth_ * blockSizeHeight_, resultData);
+    cudaMemPrefetchAsync(res->blockData(), sizeof(Type) * res->blockSizeHeight() * res->blockSizeWidth(), cudaCpuDeviceId, this->stream());
+
+    res->recordEvent(this->stream());
+
 
     this->addResult(res);
   }
 
   std::shared_ptr<hh::AbstractTask <
-                  MatrixBlockData<Type, 'p', Order::Column>, std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>>>
+                  UnifiedMatrixBlockData<Type, 'p'>, std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>>>
 
   copy() override {
-    return std::make_shared<CudaProductTask>(blockSizeHeight_, blockSizeWidth_, this->numberThreads());
+    return std::make_shared<CudaProductTask>(this->numberThreads());
   }
 
 

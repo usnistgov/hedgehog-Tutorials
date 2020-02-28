@@ -59,12 +59,12 @@ class UnifiedMatrixBlockData : public MatrixBlockData<Type, Id, Order::Column>,
   }
 
   virtual ~UnifiedMatrixBlockData() {
-    if (releaseMemory_) {
-      checkCudaErrors(cudaFree(this->blockData()));
-    }
-
     if (eventCreated_) {
       checkCudaErrors(cudaEventDestroy(event_));
+    }
+
+    if (releaseMemory_) {
+      checkCudaErrors(cudaFree(this->blockData()));
     }
   }
 

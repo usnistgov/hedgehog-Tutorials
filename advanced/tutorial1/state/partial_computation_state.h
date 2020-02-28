@@ -6,20 +6,20 @@
 #define HEDGEHOG_TUTORIALS_PARTIAL_COMPUTATION_STATE_H
 #include <hedgehog/hedgehog.h>
 #include <ostream>
-#include "../data/matrix_block_data.h"
+#include "../data/unified_matrix_block_data.h"
 
 template<class Type>
 class PartialComputationState
     : public hh::AbstractState<
-        std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>>,
-        MatrixBlockData<Type, 'c', Order::Column>, MatrixBlockData<Type, 'p', Order::Column>
+        std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>,
+        MatrixBlockData<Type, 'c', Order::Column>, UnifiedMatrixBlockData<Type, 'p'>
     > {
  private:
   size_t
       gridHeightResults_ = 0,
       gridWidthResults_ = 0;
 
-  std::vector<std::vector<std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>>>
+  std::vector<std::vector<std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>>
       gridPartialProduct_ = {};
 
   std::vector<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>>
@@ -32,7 +32,7 @@ class PartialComputationState
   PartialComputationState(size_t gridHeightResults, size_t gridWidthResults, size_t ttl)
       : gridHeightResults_(gridHeightResults), gridWidthResults_(gridWidthResults), ttl_(ttl) {
     gridPartialProduct_ =
-        std::vector<std::vector<std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>>>(
+        std::vector<std::vector<std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>>(
             gridHeightResults_ * gridWidthResults_);
     gridMatrixC_ =
         std::vector<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>>(
@@ -45,11 +45,10 @@ class PartialComputationState
     auto i = ptr->rowIdx(), j = ptr->colIdx();
     if (isPAvailable(i, j)) {
       auto res = std::make_shared<
-          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>>
+          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>
       >();
       res->first = ptr;
       res->second = partialProduct(i, j);
-
       this->push(res);
       --ttl_;
     } else {
@@ -57,11 +56,11 @@ class PartialComputationState
     }
   }
 
-  void execute(std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>> ptr) override {
+  void execute(std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>> ptr) override {
     auto i = ptr->rowIdx(), j = ptr->colIdx();
     if (isCAvailable(i, j)) {
       auto res = std::make_shared<
-          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>>
+          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>
       >();
       res->first = blockMatrixC(i, j);
       res->second = ptr;
@@ -78,14 +77,14 @@ class PartialComputationState
   bool isPAvailable(size_t i, size_t j) { return gridPartialProduct_[i * gridWidthResults_ + j].size() != 0; }
   bool isCAvailable(size_t i, size_t j) { return gridMatrixC_[i * gridWidthResults_ + j] != nullptr; }
 
-  std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>> partialProduct(size_t i, size_t j) {
+  std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>> partialProduct(size_t i, size_t j) {
     assert(isPAvailable(i, j));
-    std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>> p = gridPartialProduct_[i * gridWidthResults_ + j].back();
+    std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>> p = gridPartialProduct_[i * gridWidthResults_ + j].back();
     gridPartialProduct_[i * gridWidthResults_ + j].pop_back();
     return p;
   }
 
-  void partialProduct(std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>> p) {
+  void partialProduct(std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>> p) {
     gridPartialProduct_[p->rowIdx() * gridWidthResults_ + p->colIdx()].push_back(p);
   }
 

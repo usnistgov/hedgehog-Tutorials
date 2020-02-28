@@ -7,30 +7,33 @@
 
 #include <hedgehog/hedgehog.h>
 
-#include "../data/matrix_block_data.h"
+#include "../data/unified_matrix_block_data.h"
 
 template<class Type>
 class AdditionTask : public hh::AbstractTask<
     MatrixBlockData<Type, 'c', Order::Column>,
     std::pair<
         std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
-        std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>
+        std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>
     >> {
 
  public:
   explicit AdditionTask(size_t numberThreads) :
       hh::AbstractTask<
           MatrixBlockData<Type, 'c', Order::Column>,
-          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>
+          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>
           >>("Addition Task", numberThreads) {}
 
   virtual ~AdditionTask() = default;
 
  public:
   void execute(std::shared_ptr<std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
-      std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>>> ptr) override {
+      std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>> ptr) override {
     auto c = ptr->first;
     auto p = ptr->second;
+
+    p->synchronizeEvent();
+
     assert(c->blockSizeWidth() == p->blockSizeWidth());
     assert(c->blockSizeHeight() == p->blockSizeHeight());
 
@@ -41,17 +44,14 @@ class AdditionTask : public hh::AbstractTask<
     }
 
 
-//    p->returnToMemoryManager();
-
-    delete [] p->fullMatrixData();
-
+    p->returnToMemoryManager();
 
     this->addResult(c);
   }
 
   std::shared_ptr<hh::AbstractTask<MatrixBlockData<Type, 'c', Order::Column>,
       std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
-          std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>>>> copy() override {
+          std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>>> copy() override {
     return std::make_shared<AdditionTask>(this->numberThreads());
   }
 };

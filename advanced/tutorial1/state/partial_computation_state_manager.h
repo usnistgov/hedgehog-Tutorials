@@ -12,16 +12,16 @@
 template<class Type>
 class PartialComputationStateManager
     : public hh::StateManager<
-        std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>>,
+        std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>,
         MatrixBlockData<Type, 'c', Order::Column>,
-        MatrixBlockData<Type, 'p', Order::Column>
+        UnifiedMatrixBlockData<Type, 'p'>
     > {
  public:
   explicit PartialComputationStateManager(std::shared_ptr<PartialComputationState<Type>> const &state) :
       hh::StateManager<std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
-          std::shared_ptr<MatrixBlockData<Type, 'p', Order::Column>>>,
+          std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>,
           MatrixBlockData<Type, 'c', Order::Column>,
-          MatrixBlockData<Type, 'p', Order::Column>>("Partial Computation State Manager", state, false) {}
+          UnifiedMatrixBlockData<Type, 'p'>>("Partial Computation State Manager", state, false) {}
 
   bool canTerminate() override {
     this->state()->lock();
