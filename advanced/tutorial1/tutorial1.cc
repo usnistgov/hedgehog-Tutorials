@@ -305,7 +305,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     }
   }
 
-  std::cout << "experiment,numGPUs, numThreadsProduct, numThreadsAddition, n,m,p,blockSize,time(s),gflops,first,avg" << std::endl;
+  std::cout << "experiment,numGPUs,numThreadsProduct,numThreadsAddition,n,m,p,blockSize,time(s),gflops,first,avg" << std::endl;
 
   for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
     for (auto mat: aMatrixData) {
@@ -485,14 +485,23 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
     runtimes.push_back(duration);
 
+    std::string experimentName = "hedgehogGPUMatMul";
+    if (innerTraversal)
+    {
+      experimentName += "Inner";
+    } else {
+      experimentName += "Outer";
+    }
 
-    std::cout << "hedgehogGPUMatMul," << deviceIds.size() << "," << numberThreadProduct << "," << numberThreadAddition
+
+
+    std::cout << experimentName << "," << deviceIds.size() << "," << numberThreadProduct << "," << numberThreadAddition
               << ","
               << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
               computeMatrixMultiplicationGFLOPS(n, m, p, duration) << "," << resultTimes[0] << "," << average << std::endl;
     matrixMultiplicationGraph
         .createDotFile("AdvancedTutorial1-" + std::to_string(innerTraversal) + "-" + std::to_string(n) + "-" + std::to_string(blockSize) +  "-" + std::to_string(deviceIds.size()) + "-" + std::to_string(numberThreadProduct) + "-" + std::to_string(retryNum) +  ".dot", hh::ColorScheme::EXECUTION,
-                       hh::StructureOptions::QUEUE);
+                       hh::StructureOptions::QUEUE, hh::DebugOptions::NONE, true);
 
     resultTimes.clear();
   }
