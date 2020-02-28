@@ -11,7 +11,7 @@ template <class Type>
 class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', Order::Column>, std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>> {
  private:
   cublasHandle_t handle_ = {};
-  float *tempGpuResult_;
+  Type *tempGpuResult_;
   size_t blockSizeHeight_;
   size_t blockSizeWidth_;
 
@@ -25,7 +25,8 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
   void initializeCuda() override {
     checkCudaErrors(cublasCreate_v2(&handle_));
     checkCudaErrors(cublasSetStream_v2(handle_, this->stream()));
-    checkCudaErrors(cudaMallocManaged((void **)&tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_));
+    checkCudaErrors(cudaMallocHost((void **)&tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_));
+//    checkCudaErrors(cudaMallocManaged((void **)&tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_));
   }
 
   void shutdownCuda() override {
@@ -48,7 +49,7 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
 //    res->leadingDimension(matA->blockSizeHeight());
 //    res->ttl(1);
 
-    checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, this->deviceId(), this->stream()));
+//    checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, this->deviceId(), this->stream()));
 
     Type *resultData = new Type[matA->blockSizeHeight() * matB->blockSizeWidth()];
     auto res = std::make_shared<MatrixBlockData<Type, 'p', Order::Column>>(matA->rowIdx(), matB->colIdx(), matA->blockSizeHeight(), matB->blockSizeWidth(), resultData, resultData);
@@ -77,14 +78,15 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
       exit(43);
     }
 
-    checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, cudaCpuDeviceId, this->stream()));
+//    checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, cudaCpuDeviceId, this->stream()));
+    cudaMemcpyAsync(resultData, tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, cudaMemcpyDeviceToHost, this->stream());
 
     checkCudaErrors(cudaStreamSynchronize(this->stream()));
 
     matA->returnToMemoryManager();
     matB->returnToMemoryManager();
 
-    std::copy(tempGpuResult_, tempGpuResult_ + blockSizeWidth_ * blockSizeHeight_, resultData);
+//    std::copy(tempGpuResult_, tempGpuResult_ + blockSizeWidth_ * blockSizeHeight_, resultData);
 
     this->addResult(res);
   }
