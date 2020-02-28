@@ -24,7 +24,7 @@ class UnifiedMatrixBlockData : public MatrixBlockData<Type, Id, Order::Column>,
   UnifiedMatrixBlockData() : releaseMemory_(false){}
 
   explicit UnifiedMatrixBlockData(size_t blockSize) : releaseMemory_(true) {
-    hh::checkCudaErrors(cudaMallocManaged((void **) this->adressBlockData(), sizeof(Type) * blockSize * blockSize));
+    checkCudaErrors(cudaMallocManaged((void **) this->adressBlockData(), sizeof(Type) * blockSize * blockSize));
   }
 
   UnifiedMatrixBlockData(
@@ -60,11 +60,11 @@ class UnifiedMatrixBlockData : public MatrixBlockData<Type, Id, Order::Column>,
 
   virtual ~UnifiedMatrixBlockData() {
     if (releaseMemory_) {
-      hh::checkCudaErrors(cudaFree(this->blockData()));
+      checkCudaErrors(cudaFree(this->blockData()));
     }
 
     if (eventCreated_) {
-      hh::checkCudaErrors(cudaEventDestroy(event_));
+      checkCudaErrors(cudaEventDestroy(event_));
     }
   }
 
@@ -72,14 +72,14 @@ class UnifiedMatrixBlockData : public MatrixBlockData<Type, Id, Order::Column>,
 
   void recordEvent(cudaStream_t stream) {
     if (!eventCreated_) {
-      hh::checkCudaErrors(cudaEventCreate(&event_));
+      checkCudaErrors(cudaEventCreate(&event_));
       eventCreated_ = true;
     }
-    hh::checkCudaErrors(cudaEventRecord(event_, stream));
+    checkCudaErrors(cudaEventRecord(event_, stream));
   }
 
   void synchronizeEvent() {
-    hh::checkCudaErrors(cudaEventSynchronize(event_));
+    checkCudaErrors(cudaEventSynchronize(event_));
   }
 
 

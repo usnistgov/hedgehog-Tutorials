@@ -19,18 +19,18 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
   explicit CudaProductTask(size_t blockSizeHeight, size_t blockSizeWidth, size_t numberThreads = 1) :
   hh::AbstractCUDATask<
       MatrixBlockData<Type, 'p', Order::Column>,
-          std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>>("CUDA Product Task", numberThreads, false, false),
+          std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>>("CUDA Product Task", numberThreads, false, true),
           blockSizeHeight_(blockSizeHeight), blockSizeWidth_(blockSizeWidth) {}
 
   void initializeCuda() override {
-    hh::checkCudaErrors(cublasCreate_v2(&handle_));
-    hh::checkCudaErrors(cublasSetStream_v2(handle_, this->stream()));
-    hh::checkCudaErrors(cudaMallocManaged((void **)&tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_));
+    checkCudaErrors(cublasCreate_v2(&handle_));
+    checkCudaErrors(cublasSetStream_v2(handle_, this->stream()));
+    checkCudaErrors(cudaMallocManaged((void **)&tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_));
   }
 
   void shutdownCuda() override {
-    hh::checkCudaErrors(cublasDestroy_v2(handle_));
-    hh::checkCudaErrors(cudaFree(tempGpuResult_));
+    checkCudaErrors(cublasDestroy_v2(handle_));
+    checkCudaErrors(cudaFree(tempGpuResult_));
   }
 
   void execute(std::shared_ptr<std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>> ptr) override {
@@ -48,7 +48,7 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
 //    res->leadingDimension(matA->blockSizeHeight());
 //    res->ttl(1);
 
-    hh::checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, this->deviceId(), this->stream()));
+    checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, this->deviceId(), this->stream()));
 
     Type *resultData = new Type[matA->blockSizeHeight() * matB->blockSizeWidth()];
     auto res = std::make_shared<MatrixBlockData<Type, 'p', Order::Column>>(matA->rowIdx(), matB->colIdx(), matA->blockSizeHeight(), matB->blockSizeWidth(), resultData, resultData);
@@ -57,7 +57,7 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
     matB->synchronizeEvent();
 
     if constexpr(std::is_same<Type, float>::value) {
-      hh::checkCudaErrors(
+      checkCudaErrors(
           cublasSgemm_v2(handle_, CUBLAS_OP_N, CUBLAS_OP_N,
                          matA->blockSizeHeight(), matB->blockSizeWidth(), matA->blockSizeWidth(), &alpha,
                          (float *) matA->blockData(), matA->leadingDimension(),
@@ -65,7 +65,7 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
                          (float *) tempGpuResult_, blockSizeHeight_)
       );
     } else if (std::is_same<Type, double>::value) {
-      hh::checkCudaErrors(
+      checkCudaErrors(
           cublasDgemm_v2(handle_, CUBLAS_OP_N, CUBLAS_OP_N,
                          matA->blockSizeHeight(), matB->blockSizeWidth(), matA->blockSizeWidth(), &alpha,
                          (double *) matA->blockData(), matA->leadingDimension(),
@@ -77,12 +77,9 @@ class CudaProductTask : public hh::AbstractCUDATask<MatrixBlockData<Type, 'p', O
       exit(43);
     }
 
-    hh::checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, cudaCpuDeviceId, this->stream()));
+    checkCudaErrors(cudaMemPrefetchAsync(tempGpuResult_, sizeof(Type) * blockSizeHeight_ * blockSizeWidth_, cudaCpuDeviceId, this->stream()));
 
-
-    hh::checkCudaErrors(cudaStreamSynchronize(this->stream()));
-
-    hh::checkCudaErrors(cudaGetLastError());
+    checkCudaErrors(cudaStreamSynchronize(this->stream()));
 
     matA->returnToMemoryManager();
     matB->returnToMemoryManager();

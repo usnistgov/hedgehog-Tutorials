@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
     deviceIds = deviceIdsArg.getValue();
     if (deviceIds.empty()) {
       int numberGPUSAvailable = 0;
-      hh::checkCudaErrors(cudaGetDeviceCount(&numberGPUSAvailable));
+      checkCudaErrors(cudaGetDeviceCount(&numberGPUSAvailable));
       deviceIds.assign(numberGPUSAvailable, 0);
       std::iota(deviceIds.begin(), deviceIds.end(), 0);
     }

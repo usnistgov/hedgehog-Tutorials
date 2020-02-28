@@ -28,10 +28,10 @@ template <class MatrixType, char Id>
 
     managedMemory->ttl(blockTTL_);
 
-    hh::checkCudaErrors(cudaMemPrefetchAsync(managedMemory->blockData(), sizeof(MatrixType) * managedMemory->blockSizeHeight() * managedMemory->blockSizeWidth(), this->deviceId(), this->stream()));
+    checkCudaErrors(cudaMemPrefetchAsync(managedMemory->blockData(), sizeof(MatrixType) * managedMemory->blockSizeHeight() * managedMemory->blockSizeWidth(), this->deviceId(), this->stream()));
 
     managedMemory->recordEvent(this->stream());
-    hh::checkCudaErrors(cudaGetLastError());
+    checkCudaErrors(cudaGetLastError());
     this->addResult(managedMemory);
   }
 

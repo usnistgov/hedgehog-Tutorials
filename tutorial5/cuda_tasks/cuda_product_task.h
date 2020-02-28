@@ -44,12 +44,12 @@ class CudaProductTask : public hh::AbstractCUDATask<
         countPartialComputation_(countPartialComputation) {}
 
   void initializeCuda() override {
-    hh::checkCudaErrors(cublasCreate_v2(&handle_));
-    hh::checkCudaErrors(cublasSetStream_v2(handle_, this->stream()));
+    checkCudaErrors(cublasCreate_v2(&handle_));
+    checkCudaErrors(cublasSetStream_v2(handle_, this->stream()));
   }
 
   void shutdownCuda() override {
-    hh::checkCudaErrors(cublasDestroy_v2(handle_));
+    checkCudaErrors(cublasDestroy_v2(handle_));
   }
   void execute(std::shared_ptr<
       std::pair<std::shared_ptr<CudaMatrixBlockData<Type, 'a'>>, std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>
@@ -69,7 +69,7 @@ class CudaProductTask : public hh::AbstractCUDATask<
     res->ttl(1);
 
     if constexpr(std::is_same<Type, float>::value) {
-      hh::checkCudaErrors(
+      checkCudaErrors(
           cublasSgemm_v2(handle_, CUBLAS_OP_N, CUBLAS_OP_N,
                          matA->blockSizeHeight(), matB->blockSizeWidth(), matA->blockSizeWidth(), &alpha,
                          (float *) matA->blockData(), matA->leadingDimension(),
@@ -77,7 +77,7 @@ class CudaProductTask : public hh::AbstractCUDATask<
                          (float *) res->blockData(), res->leadingDimension())
       );
     } else if (std::is_same<Type, double>::value) {
-      hh::checkCudaErrors(
+      checkCudaErrors(
           cublasDgemm_v2(handle_, CUBLAS_OP_N, CUBLAS_OP_N,
                          matA->blockSizeHeight(), matB->blockSizeWidth(), matA->blockSizeWidth(), &alpha,
                          (double *) matA->blockData(), matA->leadingDimension(),
@@ -88,7 +88,7 @@ class CudaProductTask : public hh::AbstractCUDATask<
       std::cerr << "The matrix can't be multiplied" << std::endl;
       exit(43);
     }
-    hh::checkCudaErrors(cudaStreamSynchronize(this->stream()));
+    checkCudaErrors(cudaStreamSynchronize(this->stream()));
 
     matA->returnToMemoryManager();
     matB->returnToMemoryManager();

@@ -2,6 +2,8 @@
 // Created by tjb3 on 10/30/19.
 //
 
+#define HH_DISABLE_CHECK_CUDA
+
 #include <hedgehog/hedgehog.h>
 #include <random>
 #include <cublasXt.h>
@@ -43,7 +45,7 @@ allocateUnifiedMemory(size_t row, size_t col, size_t blockSize, std::uniform_rea
                       std::mt19937_64 &rng) {
   Type *unifiedMem;
 
-  hh::checkCudaErrors(cudaMallocManaged((void **) &unifiedMem, blockSize * blockSize * sizeof(Type)));
+  checkCudaErrors(cudaMallocManaged((void **) &unifiedMem, blockSize * blockSize * sizeof(Type)));
 
   if constexpr (isTestResults) {
     std::for_each(unifiedMem, unifiedMem + (blockSize * blockSize),
@@ -169,8 +171,10 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
       numberThreadAddition = 0,
       numRetry = 1;
 
-  bool innerTraversal = false;
-  bool restrictInputMemory = true;
+  bool
+    innerTraversal = false,
+    restrictInputMemory = true,
+    evaluateOutputTime = false;
 
   std::vector<double>
       resultTimes = {};
@@ -213,6 +217,8 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     cmd.add(deviceIdsArg);
     TCLAP::SwitchArg traversalArg("i", "inner-traversal", "Uses inner-traversal. Matrices should fit into GPU memory.", false);
     cmd.add(traversalArg);
+    TCLAP::SwitchArg evaluateOutputTimeArg("o", "output-time", "Evaluates the output timing for first and average.", false);
+    cmd.add(evaluateOutputTimeArg);
 
 
 
@@ -225,6 +231,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     numberThreadProduct = productArg.getValue();
     numRetry = retryArg.getValue();
     innerTraversal = traversalArg.getValue();
+    evaluateOutputTime = evaluateOutputTimeArg.getValue();
 
     restrictInputMemory = !innerTraversal;
 
@@ -234,7 +241,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     deviceIds = deviceIdsArg.getValue();
     if (deviceIds.empty()) {
       int numberGPUSAvailable = 0;
-      hh::checkCudaErrors(cudaGetDeviceCount(&numberGPUSAvailable));
+      checkCudaErrors(cudaGetDeviceCount(&numberGPUSAvailable));
       deviceIds.assign(numberGPUSAvailable, 0);
       std::iota(deviceIds.begin(), deviceIds.end(), 0);
     }
@@ -243,8 +250,8 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
   { std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
 
   for (auto device :deviceIds) {
-    hh::checkCudaErrors(cudaSetDevice(device));
-    hh::checkCudaErrors(cublasInit());
+    checkCudaErrors(cudaSetDevice(device));
+    checkCudaErrors(cublasInit());
   }
 
   nBlocks = std::ceil(n / blockSize) + (n % blockSize == 0 ? 0 : 1),
@@ -309,18 +316,18 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
   for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
     for (auto mat: aMatrixData) {
-      hh::checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
+      checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
                                                                  * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
     }
 
     for (auto mat: bMatrixData) {
-      hh::checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
+      checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
                                                                  * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
     }
 
     for (auto device :deviceIds) {
-      hh::checkCudaErrors(cudaSetDevice(device));
-      hh::checkCudaErrors(cudaDeviceSynchronize());
+      checkCudaErrors(cudaSetDevice(device));
+      checkCudaErrors(cudaDeviceSynchronize());
     }
     if constexpr (isTestResults) {
 //      std::cout << "MatA" << std::endl;
@@ -418,13 +425,16 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
     // Notify push done
     matrixMultiplicationGraph.finishPushingData();
-    auto startFirstItem = std::chrono::high_resolution_clock::now();
-    while (auto res = matrixMultiplicationGraph.getBlockingResult()) {
-      auto endFirstItem = std::chrono::high_resolution_clock::now();
-      auto durationItem =
-          std::chrono::duration_cast<std::chrono::duration<double>>(endFirstItem - startFirstItem).count();
-      resultTimes.push_back(durationItem);
-      startFirstItem = std::chrono::high_resolution_clock::now();
+
+    if (evaluateOutputTime) {
+      auto startFirstItem = std::chrono::high_resolution_clock::now();
+      while (auto res = matrixMultiplicationGraph.getBlockingResult()) {
+        auto endFirstItem = std::chrono::high_resolution_clock::now();
+        auto durationItem =
+            std::chrono::duration_cast<std::chrono::duration<double>>(endFirstItem - startFirstItem).count();
+        resultTimes.push_back(durationItem);
+        startFirstItem = std::chrono::high_resolution_clock::now();
+      }
     }
 
 
@@ -439,29 +449,29 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 //      std::cout << "=========================================================" << std::endl;
 
       cublasXtHandle_t handle;
-      hh::checkCudaErrors(cublasXtCreate(&handle));
+      checkCudaErrors(cublasXtCreate(&handle));
 
-      hh::checkCudaErrors(cublasXtDeviceSelect(handle, deviceIds.size(), deviceIds.data()));
-      hh::checkCudaErrors(cublasXtSetBlockDim(handle, blockSize));
+      checkCudaErrors(cublasXtDeviceSelect(handle, deviceIds.size(), deviceIds.data()));
+      checkCudaErrors(cublasXtSetBlockDim(handle, blockSize));
 
       MatrixType alpha = 1.0, beta = 1.0;
 
       if constexpr (std::is_same<MatrixType, double>::value) {
-        hh::checkCudaErrors(cublasXtDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+        checkCudaErrors(cublasXtDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
                                           n, p, m, (double *) (&alpha),
                                           (double *) testA, n,
                                           (double *) testB, m,
                                           (double *) (&beta), (double *) testResult, n));
       } else {
-        hh::checkCudaErrors(cublasXtSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+        checkCudaErrors(cublasXtSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
                                           n, p, m, (float *) (&alpha),
                                           (float *) testA, n,
                                           (float *) testB, m,
                                           (float *) (&beta), (float *) testResult, n));
       }
 
-      hh::checkCudaErrors(cudaDeviceSynchronize());
-      hh::checkCudaErrors(cublasXtDestroy(handle));
+      checkCudaErrors(cudaDeviceSynchronize());
+      checkCudaErrors(cublasXtDestroy(handle));
 
 //      printMatrix(testResult, n, p);
 
@@ -472,15 +482,13 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
     // Wait for the graph to terminate
     matrixMultiplicationGraph.waitForTermination();
-    hh::checkCudaErrors(cudaGetLastError());
-    for (auto device :deviceIds) {
-      hh::checkCudaErrors(cudaSetDevice(device));
-      hh::checkCudaErrors(cudaDeviceSynchronize());
-    }
 
     auto end = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - begin).count();
-    double average = std::accumulate(resultTimes.begin(), resultTimes.end(), 0.0) / resultTimes.size();
+    double average = 0.0;
+    if (evaluateOutputTime) {
+      average = std::accumulate(resultTimes.begin(), resultTimes.end(), 0.0) / resultTimes.size();
+    }
 
 
     runtimes.push_back(duration);
@@ -498,7 +506,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     std::cout << experimentName << "," << deviceIds.size() << "," << numberThreadProduct << "," << numberThreadAddition
               << ","
               << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
-              computeMatrixMultiplicationGFLOPS(n, m, p, duration) << "," << resultTimes[0] << "," << average << std::endl;
+              computeMatrixMultiplicationGFLOPS(n, m, p, duration) << "," << (evaluateOutputTime ? resultTimes[0] : 0.0) << "," << average << std::endl;
     matrixMultiplicationGraph
         .createDotFile("AdvancedTutorial1-" + std::to_string(innerTraversal) + "-" + std::to_string(n) + "-" + std::to_string(blockSize) +  "-" + std::to_string(deviceIds.size()) + "-" + std::to_string(numberThreadProduct) + "-" + std::to_string(retryNum) +  ".dot", hh::ColorScheme::EXECUTION,
                        hh::StructureOptions::QUEUE, hh::DebugOptions::NONE, true);
@@ -513,18 +521,18 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
 
   for (auto mat: aMatrixData) {
-    hh::checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
+    checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
                                                                * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
   }
 
   for (auto mat: bMatrixData) {
-    hh::checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
+    checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), blockSize
                                                                * blockSize * sizeof(MatrixType), cudaCpuDeviceId));
   }
 
   for (auto device :deviceIds) {
-    hh::checkCudaErrors(cudaSetDevice(device));
-    hh::checkCudaErrors(cudaDeviceSynchronize());
+    checkCudaErrors(cudaSetDevice(device));
+    checkCudaErrors(cudaDeviceSynchronize());
   }
 
   for (auto partialData : cMatrixData) {
@@ -533,18 +541,18 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
   }
 
   for (auto partialData : aMatrixData) {
-    hh::checkCudaErrors(cudaFree(partialData->blockData()));
+    checkCudaErrors(cudaFree(partialData->blockData()));
     partialData->blockData(nullptr);
   }
 
   for (auto partialData : bMatrixData) {
-    hh::checkCudaErrors(cudaFree(partialData->blockData()));
+    checkCudaErrors(cudaFree(partialData->blockData()));
     partialData->blockData(nullptr);
   }
 
   for (auto device :deviceIds) {
     cudaSetDevice(device);
-    hh::checkCudaErrors(cublasShutdown());
+    checkCudaErrors(cublasShutdown());
   }
   return 0;
 }
