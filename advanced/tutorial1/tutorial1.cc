@@ -2,7 +2,7 @@
 // Created by tjb3 on 10/30/19.
 //
 
-#define HH_DISABLE_CHECK_CUDA
+//#define HH_DISABLE_CHECK_CUDA
 
 #include <hedgehog/hedgehog.h>
 #include <random>
