@@ -501,6 +501,9 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
       experimentName += "Outer";
     }
 
+    if (!evaluateOutputTime) {
+      experimentName += "NoOutput";
+    }
 
 
     std::cout << experimentName << "," << deviceIds.size() << "," << numberThreadProduct << "," << numberThreadAddition
