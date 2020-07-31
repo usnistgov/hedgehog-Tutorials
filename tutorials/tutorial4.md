@@ -59,19 +59,19 @@ It consists of a pool and a way to serve instances of an object into a *Task* an
 
 There is one mandatory parameter that is needed to create a *memory manager*, the pool capacity:
 ```cpp
-explicit AbstractMemoryManager(size_t const &capacity)
+explicit MemoryManager(size_t const &capacity)
 ```
 
 This pool capacity will set the maximum number of instances of an object that will flow into the graph from this *memory manager*.
 
 Hedgehod defines two *memory managers*:
-1. "AbstractMemoryManager": the base *Memory Manager*, the pool will be initialized by calling only the default constructor of the data defined by the user, 
-2. "StaticMemoryManager": the static "Memory Manager", the pool will be initialized by calling the specified constructor of the data defined by the user.  
+1. "MemoryManager": the base *memory manager*, the pool will be initialized by calling only the default constructor of the data defined by the user, 
+2. "StaticMemoryManager": the static *memory manager*, the pool will be initialized by calling the specified constructor of the data defined by the user.  
 
 In this example, and in general, especially with CUDA related data, we encourage to use the *static memory manager* to avoid GPU synchronisation during the execution.
 
 The type managed by the *memory manager* is set by defining:
-1. The only template type of the "AbstractMemoryManager", 
+1. The only template type of the "MemoryManager", 
 2. The first template type of the "StaticMemoryManager".
 
 In order for the "StaticMemoryManager" to choose the right constructor at initialization, the signature types must match the other "StaticMemoryManager" template types.
@@ -137,9 +137,9 @@ StaticMemoryManager<House, size_t, size_t > smm(42, 98, 1);
 ## Recycling mechanism
 
 All the *memory managers* come with a recycling mechanism. When MemoryData::returnToMemoryManager() is invoked, the recycling mechanism is used which consists of calling the following virtual methods, in the following order:
-1. MemoryData::used(): Method used to update the "state" of the MemoryData (for example in the case the MemoryData is returned to the AbstractMemoryManager multiple times before being recycled and sent back to the Pool.
+1. MemoryData::used(): Method used to update the "state" of the MemoryData (for example in the case the MemoryData is returned to the MemoryManager multiple times before being recycled and sent back to the Pool.
 2. MemoryData::canBeRecycled(): Boolean method to determine if the MemoryData can be recycled, and sent back to the Pool.
-3. MemoryData::recycle(): Recycle the MemoryData. The data given by the AbstractMemoryManager is default constructed the first time. If specialized class attributes are allocated, they should be deallocated in this method, to avoid memory leaks, to return the ManagedMemory to the same state as default construction.
+3. MemoryData::recycle(): Recycle the MemoryData. The data given by the MemoryManager is default constructed the first time. If specialized class attributes are allocated, they should be deallocated in this method, to avoid memory leaks, to return the ManagedMemory to the same state as default construction.
 
 The same behavior, is used by the *StaticMemoryManager*, only, no other allocation *should* be made by the user, so MemoryData::recycle() can be used to clean the data if needed to be reused later on. The *managed memory* will be deallocated during the pool destruction.
 
