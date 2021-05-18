@@ -50,7 +50,7 @@ allocateUnifiedMemory(size_t row, size_t col, size_t blockSizeHeight, size_t blo
 
   if constexpr (isTestResults) {
     std::for_each(unifiedMem, unifiedMem + (blockSizeHeight * blockSizeWidth),
-                  [&unif, &rng](Type &val) { val = (Type) 1.0; }); //unif(rng); });
+                  [&unif, &rng](Type &val) { val = (Type) unif(rng); });
   }
 
 
