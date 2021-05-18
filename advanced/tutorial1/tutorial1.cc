@@ -489,17 +489,17 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
             std::chrono::duration_cast<std::chrono::duration<double>>(endFirstItem - startFirstItem).count();
         resultTimes.push_back(durationItem);
         startFirstItem = std::chrono::high_resolution_clock::now();
+
+        if constexpr(isTestResults) {
+          copyBlock<MatrixType, 'c'>(res, blockSize, testHedgehog, n);
+        }
+
       }
     }
 
     bool isAccurate = false;
 
     if constexpr (isTestResults) {
-      while (auto res = matrixMultiplicationGraph.getBlockingResult()) {
-        copyBlock<MatrixType, 'c'>(res, blockSize, testHedgehog, n);
-//        printBlock<MatrixType, 'c'>(res);
-      }
-
       if constexpr (doDebugPrintMatrices) {
         std::cout << "Hedgehog Final Results:" << std::endl;
         printMatrix(testHedgehog, n, p);
