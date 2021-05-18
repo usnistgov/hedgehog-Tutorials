@@ -198,11 +198,11 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
   try {
     TCLAP::CmdLine cmd("Matrix Multiplication parameters", ' ', "0.1");
     SizeConstraint sc;
-    TCLAP::ValueArg<size_t> nArg("n", "aheight", "Matrix A Height.", false, 10, &sc);
+    TCLAP::ValueArg<size_t> nArg("n", "aheight", "Matrix A Height.", false, 12, &sc);
     cmd.add(nArg);
-    TCLAP::ValueArg<size_t> mArg("m", "commondimension", "Common dimension.", false, 10, &sc);
+    TCLAP::ValueArg<size_t> mArg("m", "commondimension", "Common dimension.", false, 12, &sc);
     cmd.add(mArg);
-    TCLAP::ValueArg<size_t> pArg("p", "bwidth", "Matrix B Width.", false, 10, &sc);
+    TCLAP::ValueArg<size_t> pArg("p", "bwidth", "Matrix B Width.", false, 12, &sc);
     cmd.add(pArg);
     TCLAP::ValueArg<size_t> blockArg("b", "blocksize", "Block Size.", false, 3, &sc);
     cmd.add(blockArg);
