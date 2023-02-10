@@ -15,7 +15,7 @@ title: Tutorial 2 - Hadamard Product with Managed State
 ----
 
 # Goal
-The second tutorial aims to reuse the Hadamard (element-wise) product of two matrices A and B from [tutorial 1]({{site.url}}/tutorials/tutorial1) to introduce the concept of *multiple inputs*, *state*, and, *state manager*. 
+The second tutorial aims to reuse the Hadamard (element-wise) product of two matrices A and B from [tutorial 1]({{site.url}}/tutorials/tutorial1) to introduce the concept of *multiple inputs*, *state*, and *state manager*. 
 
 Here is the base API that will be presented in this tutorial: 
 * Manage the state of the computation,
@@ -24,10 +24,10 @@ Here is the base API that will be presented in this tutorial:
 ----
 
 # Computation
-The computation is decomposed as follow:
+The computation is decomposed as follows:
 1. Decompose the matrices into blocks (inside the graph), 
-2. Do the element-wise product of A and B, and, store the result into C.
-Because the decomposition of A, B, and C takes place within the graph, it is required to manage the state of the computation to be able to build the correct triplet for blocks A, B, and C.
+2. Do the element-wise product of A and B, and store the result into C.
+Because the decomposition of A, B, and C takes place within the graph, it is required to manage the state of the computation to be able to build the correct triplet for blocks A, B, and C. This is because the order in which blocks flow through the graph are non-determinstic.
 
 ----
 
@@ -45,34 +45,50 @@ These data structures are specialized with the following elements:
 ----
 
 # State and State Manager
-The Hedgehog *State Manager* is a type of node that has been designed to manage the local state of the computation. There is no built-in representation of the global state in the Hedgehog API. 
+
+While tasks are meant to achieve computations, we added a special type of node for managing the state of computations.
+In Hedgehog, the management of status is localized, being only responsible for handling the state between connected nodes. There is no built-in representation of the global state in the Hedgehog API.
+This type of node is represented by the StateManager class.
+Technically a StateManager is a task limited to only one thread, requiring a State object at construction.
+State is an object used to express the data synchronization strategy of a set of nodes handled by a state manager.
+
+For example, we used blocks to parallelize the computation in the previous tutorial.
+*MatrixData* A, B, and C are fed into the algorithm.
+Input tasks (*MatrixRowTraversalTask*) will decompose them into blocks.
+The first step of the algorithm will be to multiply these blocks of matrices together.
+The problem is that elements within A should be multiplied by their corresponding elements in B and stored in the correct location in C. The order in which these blocks are sent from the *MatrixRowTraversalTask* is non-deterministic, so we need to wait until corresponding blocks are received before sending them for element-wise multiplication.
+In order to manage the blocks coming from the decomposition tasks and forming the compatible pairs we use a StateManager and a State.
+The State holds a representation of the grid of blocks, retains them until a compatible pair is possible, forms the pair of blocks and sends it to the *HadamardProduct* task.
 
 To manage the state of computation two C++ objects are needed:
-1. An abstract state: That's the object that will represent the state itself. It will hold the data structures that are needed to manage the computation. 
-2. A state manager: A Hedgehog node that will manage the state. 
+1. An abstract state: The object that will represent the state itself. It will hold the data structures that are needed to manage the state of the computation. 
+2. A state manager task: A Hedgehog node that will execute the state with data sent to task and produce data sent from the state for the next task in the dataflow. 
 
-
-To demonstrate the usage of *state* and *state manager*, the code of the *BlockState* will be explained.
+To demonstrate the usage of the *state* and *state manager*, the code of the *BlockState* will be explained.
 
 ----
 
 # State
-In this computation, we want to form a triplet of blocks from the the blocks of matrix A, matrix B, and matrix C. To achieve that we create a class *BlockState* as follow:
+In this computation, we want to form a triplet of blocks from the blocks of matrix A, matrix B, and matrix C. 
+To achieve that we create a class *BlockState* as follows:
 
 ```cpp
-class BlockState : public AbstractState<
-    TripletMatrixBlockData<Type, Ord>,
-    MatrixBlockData<Type, 'a', Ord>, MatrixBlockData<Type, 'b', Ord>, MatrixBlockData<Type, 'c', Ord>>
+template<class Type, Order Ord>
+class BlockState : public hh::AbstractState<
+    3,
+    MatrixBlockData<Type, 'a', Ord>, MatrixBlockData<Type, 'b', Ord>, MatrixBlockData<Type, 'c', Ord>,
+    TripletMatrixBlockData<Type, Ord>>;
 ```
 
 We note here:
-1. The declaration follows the same ordering as the *AbstractTask*, output type first then input types, 
-2. There are multiple input types: Nodes in Hedgehog can accept multiple inputs, such as the *graph*, *state* or *task*.
+1. The declaration follows the same ordering as the *AbstractTask*, separator first then the list of types, 
+2. There are multiple input types: Nodes in Hedgehog can accept multiple inputs, such as the *graph*, *state*, or *task*.
 
 The multiple inputs imply:
 1. The node can accept data from nodes that produce one of its input types.
-2. The different types of inputs are received and handled independently from the others.
+2. The different types of inputs are received and handled independently of the others.
 3. Multiple execute method will need to be defined, one for each input type.
+4. The order in which the input types are received are non-deterministic and will executed one at a time.
 
 ```cpp
 void execute(std::shared_ptr<MatrixBlockData<Type, 'a', Ord>> ptr) override { /*[...]*/ }
@@ -80,17 +96,21 @@ void execute(std::shared_ptr<MatrixBlockData<Type, 'b', Ord>> ptr) override { /*
 void execute(std::shared_ptr<MatrixBlockData<Type, 'c', Ord>> ptr) override { /*[...]*/ }
 ```
 
-Contrary to the task, the state does not provide their results directly to another node, but their reults are transferred to the *state manager* that will manage it. Data is enqueued by the state by using the push method:
+Contrary to the task, the state does not provide their results directly to another node, but their results are transferred to the *state manager* that will manage it. 
+Data is enqueued by the state by using the addResult method:
 ```cpp
 void execute(std::shared_ptr<MatrixBlockData<Type, 'a', Ord>> ptr) override {
   /*[...]*/
-  this->push(triplet);
+  this->addResult(triplet);
 }
 ```
 
-In our example, we can receive any block (in any order) of matrix A, B or C, and we will produce a triplet of these blocks only if they correspond with eachother: they represent the same part of the matrix. When corresponding blocks are not available, a block is stored to await for the matching block(s) to arrive. 
+In our example, we can receive any block (in any order) of matrix A, B or C, and we will produce a triplet of these blocks only if they correspond with each other: they represent the same part of the matrix. 
+When corresponding blocks are not available, a block is stored to await for the matching block(s) to arrive later. 
 
-For each type of matrix, we define a temporary storage for these blocks with accessors that permits the storagei and receiving of these blocks. We use this storage to test if a triplet of blocks is available and remove the blocks from the storage when they are pushed to the next task. For the storage of blocks from matrix A we will have:
+For each type of matrix, we define a temporary storage for these blocks with accessors that permits the storage and receiving of these blocks. 
+We use this storage to test if a triplet of blocks is available and remove the blocks from the storage when they are pushed to the next task. 
+For the storage of blocks from matrix A we will have:
 
 ```cpp
 private:
@@ -133,7 +153,7 @@ void execute(std::shared_ptr<MatrixBlockData<Type, 'a', Ord>> ptr) override {
     triplet->b_ = blockB;
     triplet->c_ = blockC;
     // We transfer it to the state manager
-    this->push(triplet);
+    this->addResult(triplet);
   }else{
     // If not, we store the block
     matrixA(ptr);
@@ -141,36 +161,38 @@ void execute(std::shared_ptr<MatrixBlockData<Type, 'a', Ord>> ptr) override {
 }
 ```
 
-With this code we achieve a rendezvous for matrices A, B, and C, which is independant from the traversal. 
+With this code we achieve a synchronization point for matrices A, B, and C, which is independent of the traversal. 
 
-State is accessed synchronously by the *state manager* via locks that are built-in to the state. This ensures that there will be no race conditions when calling the execute method.
+State is accessed synchronously by the *state manager* via locks that are built-in to the state. 
+This ensures that there will be no race conditions when calling the execute method.
 
 ----
 
 # State Manager
 The *state manager*, is a type of node, that holds *state*. 
 
-The *state manager*, fired with an input type will sequentially process the data in the following order:
+The *state manager*, fired with an input type, will sequentially process the data in the following order:
 1. lock the *state*, 
-2. transfer the input data to the *state*, 
-3. launch the correspondant *execute* method, 
-4. gather the outputs from the *state*,
-5. add the outputs to its output edge
+2. call the *state* execute with the input data, 
+3. gather the outputs from the *state*,
+4. add the outputs to its output edge
 5. unlock the *state*. 
 
-To note, multiple *state managers* are allowed to hold the same *state* instance, so it's possible to share the *state* at different points in the graph. Because it's locked, the computation into a state should be as minimal and as fast as possible. 
+To note, multiple *state managers* are allowed to hold the same *state* instance, so it's possible to share the *state* at different points in the graph. 
+Because it's locked, the computation into a state should be as minimal and as fast as possible. 
 
-In this tutorial, we Hedgehog's default state manager, that is created as follows: 
+In this tutorial, we use Hedgehog's default state manager, that is created as follows: 
 ```cpp
 // Declaring and instantiating the state and state manager
 auto inputState = std::make_shared<BlockState<MatrixType, Ord>>(matrixA->numBlocksRows(), matrixA->numBlocksCols());
 auto inputstateManager =
-  std::make_shared<
-      StateManager<
-          TripletMatrixBlockData<MatrixType, Ord>,
-          MatrixBlockData<MatrixType, 'a', Ord>,
-          MatrixBlockData<MatrixType, 'b', Ord>,
-          MatrixBlockData<MatrixType, 'c', Ord>>>("Block State Manager", inputState);
+    std::make_shared<
+        hh::StateManager<
+            3,
+            MatrixBlockData<MatrixType, 'a', Ord>, MatrixBlockData<MatrixType, 'b', Ord>, MatrixBlockData<MatrixType, 'c', Ord>,
+            TripletMatrixBlockData<MatrixType, Ord>
+        >
+    >(inputState, "Block State Manager");
 ```
 
 ----
@@ -189,23 +211,24 @@ The graph from [tutorial 1]({{site.url}}/tutorials/tutorial1) is changed slightl
 Below is the graph construction, the connection to the input of the graph must match at least one of the task input(s) and the output of the graph must match the output of task output.
 ```cpp
 // Set The hadamard task as the task that will be connected to the graph inputs
-graphHadamard.input(taskTraversalA);
-graphHadamard.input(taskTraversalB);
-graphHadamard.input(taskTraversalC);
+graphHadamard.inputs(taskTraversalA);
+graphHadamard.inputs(taskTraversalB);
+graphHadamard.inputs(taskTraversalC);
 
 // Link the traversal tasks to the input state manager
-graphHadamard.addEdge(taskTraversalA, inputstateManager);
-graphHadamard.addEdge(taskTraversalB, inputstateManager);
-graphHadamard.addEdge(taskTraversalC, inputstateManager);
+graphHadamard.edges(taskTraversalA, inputstateManager);
+graphHadamard.edges(taskTraversalB, inputstateManager);
+graphHadamard.edges(taskTraversalC, inputstateManager);
 
 // Link the input state manager to the hadamard product
-graphHadamard.addEdge(inputstateManager, hadamardProduct);
+graphHadamard.edges(inputstateManager, hadamardProduct);
 
 // Set The hadamard task as the task that will be connected to the graph output
-graphHadamard.output(hadamardProduct);
+graphHadamard.outputs(hadamardProduct);
 ```
 
 And here is the visualization:
+
 ![Tutoriel2Graph](img/Tutorial2HadamardProductWithstate.png "Tutorial 2 Hadamard Product With State visualization")
 
 ----

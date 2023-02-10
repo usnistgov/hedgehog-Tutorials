@@ -1,123 +1,249 @@
 ---
 layout: "page"
-title: Tutorial 3 - Matrix Multiplication with cycle
+title: Tutorial 3 - Parallel Reduction
 ---
 
 # Content
+
 - [Goal](#goal)
 - [Computation](#computation)
-- [Data structure](#data-structure)
-- [Task](#computation-task)
-- [State and State Manager](#state-and-state-manager)
-- [Graph](#graph)
+- [Tasks](#computation-tasks)
+- [Graph](#graph---multiple-computation---graph-cleaning)
+- [Performance](#performance)
 - [Conclusion](#conclusion)
 
-----
+---
 
 # Goal
-This tutorial aims to create a BLAS-like Matrix Multiplication routine (C += A * B) to introduce how to resolve cycles in a Hedgehog graph.
 
-The [OpenBLAS](https://www.openblas.net/) library is required to do the computation. 
+The goal of this tutorial is to propose an implementation of a parallel reduction algorithm.
+In it, we showcase the usage of doing a fine grain computation and the cleaning API.
+Additionally, we present how we can reuse a graph for multiple computations.
 
-----
+---
 
 # Computation
-The computation is a BLAS-like Matrix Multiplication routine (C += A * B) with:
-* A, a (n * m) random matrix, 
-* B, a (m * p) random matrix, 
-* C, a (n * p) random matrix.
 
-The computation steps are:
-1. A traversal of matrices A, B, and C that produces blocks,
-2. The creation of compatible pairs of blocks from A and B,
-3. A partial matrix multiplication on the pair of blocks producing a new "temporary block",
-4. The accumulation into the C blocks of the compatible temporary blocks,
-5. Serve the output block when it is ready. 
+The principle of this algorithm is to reduce a collection of data (here a vector of ints) down to a single value with a
+specific operation.
+This operation needs to be associative and commutative in nature.
 
-Points 1, 3 and 4 will be represented as *tasks*. 
+A naive implementation would be to apply this operation in all elements in the collection consecutively.
+We would like to propose a parallel implementation, our strategy is to decompose the vector to process small parts of
+it.
+The parts are then reduced in parallel producing partial results.
+These are then reduced down to a single result value.
 
-Points 2 and 5 will be represented as *states* and *state managers*, because it represents points where data needs to be gathered or stored temporally to satify dependencies. 
+The input vector is considered as read-only, and won't be writte too.
 
-A note here, because we don't know the order of the temporary blocks that are produced from the product and addition *tasks*, an additional *state* and *state manager* is needed in front of the accumulation task.
+We propose the following implementation:
 
-To create an output block it needs a full row of blocks from matrix A and a full column of blocks from matrix B, so two *tasks* will be implemented to traverse the matrices properly, as shown in the figure below.
+1. Decompose the vector into parts (VectorDecomposition),
+2. Reduce these vectors down to partial results (ReductionTask),
+3. Do the reduction of the partial results (FinalReductionTask).
 
- 
-![MatMulDecomposition](img/Tutorial3MatMulDecomp.png "Tutorial 3 Matrix Multiplication decomposition and traversal.")
+--- 
 
-----
+# Computation tasks
 
-# Data structure
-The same data structure representing the matrix and the matrix blocks are reused from [tutorial 1]({{site.url}}/tutorials/tutorial1) and [tutorial 2]({{site.url}}/tutorials/tutorial2). 
+## Vector Decomposition
 
-The triplet are not used because we do not need to carry a block of A, b and C, just a pair is used for the product. 
+We consider the vector as read-only.
+In order to avoid extra copies or constructions of smaller vectors, the task produces a pair of iterators.
+The iterators represents the range \[begin, end\] that need to be reduced.
+These ranges will be processed in parallel in the next task.
 
-A special matrix block specialization with id as "p" is used for the temporary blocks (partial results). 
-
-----
-
-# Computation task
-Here the tasks are simple:
-* The product task is a call to the *sgemm* (single precision) or *dgemm* (double precision) routine from [OpenBLAS](http://www.openblas.net/),
-* the addiction task, the sum of two contiguous pieces of memory.  
-
-----
-
-# State and State Manager
-# States
-Multiples "states" are defined in this algorithm:
-* "InputBlockState": The state is used to create a pair of compatible blocks from matrices A and B. Because each of the blocks are used multiple time, these blocks maintain a "time to leave", which is defined at state construction. When the time to leave reaches 0, then the block is discarded from the temporary storage.
-* "OutputState": The state is used to count the number of times the block has been accumulated, and will push the block outside of the graph when the final accumulation is done. 
-* "PartialComputationState": The state creates a pair of blocks from a compatible temporary block and block from matrix C. 
-
-# State Manager 
-We could have only used the *default state manager* for these states if there were no cycles in the graph.
-
-But because of the cycle between the addition *task* and the partial computation *state*, a special *state manager* has to be defined from the "StateManager", and the "canTerminate" method has to be overloaded to solve the cycle.
+Below is the task definition:
 
 ```cpp
-template<class Type, Order Ord = Order::Row>
-class PartialComputationStateManager
-    : public hh::StateManager<
-        std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>, std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>,
-        MatrixBlockData<Type, 'c', Ord>,
-        MatrixBlockData<Type, 'p', Ord>
-    > {
- public:
-
-  explicit PartialComputationStateManager(std::shared_ptr<PartialComputationState<Type, Ord>> const &state) :
-  	  // Calling the StateManager constructor
-      hh::StateManager<std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>,
-                                 std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>,
-                       MatrixBlockData<Type, 'c', Ord>,
-                       MatrixBlockData<Type, 'p', Ord>>("Partial Computation State Manager", state, false) {}
-
-  // Redefining canTerminate method
-  bool canTerminate() override {
-    this->state()->lock();
-    auto ret = std::dynamic_pointer_cast<PartialComputationState<Type, Ord>>(this->state())->isDone();
-    this->state()->unlock();
-    return ret;
-  }
-};
+template<class DataType>
+class VectorDecomposition :
+    public hh::AbstractTask<1,
+                            std::vector<DataType>,
+                            std::pair<typename std::vector<DataType>::const_iterator,
+                                      typename std::vector<DataType>::const_iterator>>;
 ```
 
-----
+The decomposition strategy is implemented as:
 
-# Graph
-Hedgehog presents and uses a directed task graph. Which means, that cycles are possible and without special care will end in deadlock. This is because a node, by default, will terminate if these two conditions are true:
-1: Are there no "input nodes" (nodes that send data to the considerate nodes) alive ?
-2: Are all of the input data queues empty ?
+```cpp
+void execute(std::shared_ptr<std::vector<DataType>> v) override {
+    if (v->size() < blockSize_) {
+        throw std::runtime_error("The number of blocks is larger than the given vector of data.");
+    }
+  if (v->empty()) {
+    finalReductionType_->numberReductedBlocks(1);
+    this->addResult(
+        std::make_shared<
+            std::pair<typename std::vector<DataType>::const_iterator, typename std::vector<DataType>::const_iterator>>(
+                v->cbegin(), v->cend()));
+  } else {
+    finalReductionType_->numberReductedBlocks((size_t) std::ceil((double) v->size() / (double) (blockSize_)));
+    auto begin = v->begin();
+    auto endIt = v->begin();
+    long endPosition = 0;
+    while (endIt != v->end()) {
+     endPosition = (long) std::min((size_t) endPosition + blockSize_, v->size());
+     endIt = v->begin() + endPosition;
+     this->addResult(std::make_shared<std::pair<
+         typename std::vector<DataType>::const_iterator,
+         typename std::vector<DataType>::const_iterator>>(begin, endIt));
+     begin = endIt;
+    }
+  }
+}
+```
 
-Because of the cycle, it's possible there is no data in the input queues, but for each of them one of their "input nodes" may be alive.
+## Main parallel reduction task
 
-To break the cycle, knowledge specific to the computation is needed to know when it's done, and this test is represented by overloading the "canTerminate" method.
+The parallel reduction is meant to reduce a range of data from the vector down to a single value. 
+In the main case, we do the reduction by calling *std::reduce* on the range of data with the lambda given by the end-user.
 
-Here is the final graph:
-![Tutorial3Graph](img/Tutorial3MatrixMultiplicationCycle.png "Tutorial 3 Matrix Multiplication with cycle")
+```cpp
+this->addResult(
+    std::make_shared<DataType>(std::reduce(data->first + 1, data->second, *(data->first), lambda_))
+    );
+```
 
-----
+We want to do this in parallel, so we create a group of tasks by setting the number of threads attached to the task >1 and implementing the copy function: 
+
+```cpp
+  ReductionTask(size_t const numberThreads, std::function<DataType(DataType const &, DataType const &)> lambda)
+  : hh::AbstractTask<
+      1,
+      std::pair<typename std::vector<DataType>::const_iterator, typename std::vector<DataType>::const_iterator>,
+      DataType>
+  ("Reduction task", numberThreads), lambda_(std::move(lambda)) {}
+
+std::shared_ptr<hh::AbstractTask<
+    1,
+    std::pair<typename std::vector<DataType>::const_iterator, typename std::vector<DataType>::const_iterator>,
+    DataType>> 
+    copy() override {
+      return std::make_shared<ReductionTask<DataType>>(this->numberThreads(), lambda_);
+}
+```
+
+The lambda, given as a parameter, is the operation that will be applied to each element to reduce them.
+
+## Final reduction task
+
+The purpose of this task is to reduce the partial results from the previous *ReductionTask* down to a single value.
+We have chosen to use a single-threaded task for this implementation because: 
+- The processing is lightweight compared to the *ReductionTask*'s one, 
+- We didn't want to pay the cost of synchronization
+
+When the *VectorDecomposition* task gets a vector it updates the *FinalReductionTask*'s number of partial results it needs to process. 
+This only works if we wait for the computation to go through before we send another input vector of data. 
+
+In addition, before processing another input we need to reset the attributes of the task. 
+This is why we have overloaded the *clean* method. 
+
+```cpp
+  void clean() override {
+    stored_ = nullptr;
+    numberReductedBlocks_ = 0;
+  }
+```
+
+This is meant to clean the task to be able to process a new computation. 
+The other tasks do not maintain anything to do their computation, that is why we have not overloaded the *clean* method.
+
+Alternatively, a more efficient methodology would use a unique identifier to mark each vector. This would be used by the *FinalReductionTask* to identify which data point belongs to which, allowing multiple vectors to be reduced in parallel. However for the sake of this example, we want to demonstrate the cleaning behavior.
+
+
+--- 
+
+# Graph - Multiple computation - Graph cleaning
+
+The way we use the graph is slightly different from the one used in other tutorials because we want to reuse it for multiple computations. 
+Usually, the sequence of operation for a graph is: 
+1) Instantiate the graph,
+2) Build the graph,
+3) Execute the graph,
+4) Push the inputs, 
+5) Indicate no more input is sent to the graph (that start the graph termination),
+6) Loop over the produced results,
+7) Wait for the graph to fully terminates.
+
+
+Here, we follow this logic:
+1) Instantiate the graph,
+2) Build the graph,
+3) Execute the graph,
+4) For each input vector
+   1) Push an input data,
+   2) Get the result,
+   3) Clean the graph,
+5) Indicate no more input is sent to the graph (starts the graph termination),
+6) Wait for the graph to fully terminates.
+
+We are reusing the graph: for a given range size, we reduce multiple vectors.  
+This works because we know that for one input given we have one output. 
+If we were to wait for *n results* we would need to call *n* times the *graph::getBlockingResult()* method. 
+Looping over the output results with a while loop (as presented in other tutorials) won't work because *finishPushingData* is not invoked before getting the output results (the while loop never breaks because the graph would only return nullptr when it is terminated).
+
+---
+
+# Performance
+
+To make the algorithm coarse, we decompose the input data into ranges and process each range in parallel. This ensures there is sufficient data to compensate for Hedgehog's latency when sending data in the dataflow. 
+Additionally, the coarseness of the data has a huge impacts on the performance depending on your computer.
+
+To present some performance results and to showcase these impacts we have run different experiments 20 times each with different input data sizes and range sizes.
+We compute the average end-to-end computation time in nanoseconds and the standard deviation. 
+
+To compare these results together, we have divided the average computation time by the number of data in the input vector. 
+On a test computer with an Intel(R) Xeon(R) Silver 4114 CPU @ 2.20GHz with 40 logical cores (20 physical) and 196 GB memory ram we have the following results:
+
+![Parallel reduction results](img/results_parallel_reduction.png "Tutorial 3 performance results")
+
+The color scheme is chosen as follows: green for the minimum value, yellow for the 20th percentile, and red for the maximum value.
+
+The first remark is the speedup between the maximum value and the minimum value is about 1250x ! 
+
+Then, we see that the best performance is neither too small nor too big.
+The first is limited by the latency (cost of sending data between nodes) compared to the cost of the computation. 
+The second is limited due to not have sufficient data flowing through the graph and will not benefit from the available parallelism on this computer.
+
+To generate the dot files we execute the following code:
+```cpp
+{
+   auto v = std::make_shared<std::vector<DataType>>(131072, 1);
+   ParallelReductionGraph<DataType> graph(addition, 256, std::thread::hardware_concurrency());
+   graph.executeGraph();
+   graph.pushData(v);
+   graph.finishPushingData();
+   graph.waitForTermination();
+   graph.createDotFile("131072_256.dot", hh::ColorScheme::EXECUTION, hh::StructureOptions::QUEUE);
+}
+
+{
+   auto v = std::make_shared<std::vector<DataType>>(16777216, 1);
+   ParallelReductionGraph<DataType> graph(addition, 524288, std::thread::hardware_concurrency());
+   graph.executeGraph();
+   graph.pushData(v);
+   graph.finishPushingData();
+   graph.waitForTermination();
+   graph.createDotFile("16777216_524288.dot", hh::ColorScheme::EXECUTION, hh::StructureOptions::QUEUE);
+}
+```
+
+We do not generate a dot representation for the graph each time because we reuse it for multiple computations. 
+
+The dot generations are: 
+- For the worst performance (131072 vector size and 256 range size)
+  ![Tutorial 3 - Worst Performance](img/tuto3_131072_256.png "Tutorial 3 - Worst Performance")
+
+- For the best performance (16777216 vector size and 524288 range size)
+  ![Tutorial 3 - Best Performance](img/tuto3_16777216_524288.png "Tutorial 3 - Best Performance")
+
+Studying the dot files generated tells us primarily two things. First, in both cases the vector decomposition task is the primary bottleneck, so improvements for the tested vector size should be done within this task. Second, the MQS (Max Queue Size) provides us some insights. The MQS represents the maximum size that the task's input queue for the defined type reached throughout the entire execution. In both examples, this value is 1 for the input of the reduction task, which indicates that there was sufficient parallelism to keep up with the rate at which the vector decomposition task was producing data. This is one way to interpret this graph, and is often an excellent way to identify bottlenecks and where to focus your efforts when applying optimizations.
+
+---
 
 # Conclusion
-We have seen in this tutoriel:
-* How to manage a cycle in a graph.
+
+In this tutorial we have seen:
+- The importance of data decomposition in Hedgehog and how to tackle parallelism, 
+- How to clean a graph to reuse it for multiple computation. 
