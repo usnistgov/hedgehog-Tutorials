@@ -11,9 +11,11 @@
 template<class Type>
 class PartialComputationState
     : public hh::AbstractState<
-        std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>,
-        MatrixBlockData<Type, 'c', Order::Column>, UnifiedMatrixBlockData<Type, 'p'>
-    > {
+        2,
+        MatrixBlockData<Type, 'c', Order::Column>, UnifiedMatrixBlockData<Type, 'p'>,
+        std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
+                  std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>
+        >> {
  private:
   size_t
       gridHeightResults_ = 0,
@@ -45,11 +47,12 @@ class PartialComputationState
     auto i = ptr->rowIdx(), j = ptr->colIdx();
     if (isPAvailable(i, j)) {
       auto res = std::make_shared<
-          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>
+          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
+                    std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>
       >();
       res->first = ptr;
       res->second = partialProduct(i, j);
-      this->push(res);
+      this->addResult(res);
       --ttl_;
     } else {
       blockMatrixC(ptr);
@@ -60,11 +63,12 @@ class PartialComputationState
     auto i = ptr->rowIdx(), j = ptr->colIdx();
     if (isCAvailable(i, j)) {
       auto res = std::make_shared<
-          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>
+          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
+                    std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>
       >();
       res->first = blockMatrixC(i, j);
       res->second = ptr;
-      this->push(res);
+      this->addResult(res);
       --ttl_;
     } else {
       partialProduct(ptr);

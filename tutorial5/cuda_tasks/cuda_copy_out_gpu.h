@@ -24,15 +24,19 @@
 
 template<class MatrixType>
 class CudaCopyOutGpu
-    : public hh::AbstractCUDATask<MatrixBlockData<MatrixType, 'p', Order::Column>,
-                                  CudaMatrixBlockData<MatrixType, 'p'>> {
+    : public hh::AbstractCUDATask<
+        1,
+        CudaMatrixBlockData<MatrixType, 'p'>,
+        MatrixBlockData<MatrixType, 'p', Order::Column>
+    > {
  private:
-//  MatrixType *stagingMem_;
-  size_t blockSize_;
+  size_t blockSize_ = 0;
  public:
-  explicit CudaCopyOutGpu(size_t blockSize)
-      : hh::AbstractCUDATask<MatrixBlockData<MatrixType, 'p', Order::Column>, CudaMatrixBlockData<MatrixType, 'p'>>
-            ("Copy Out GPU", 1, false, false), blockSize_(blockSize) {}
+  explicit CudaCopyOutGpu(size_t blockSize) : hh::AbstractCUDATask<
+      1,
+      CudaMatrixBlockData<MatrixType, 'p'>,
+      MatrixBlockData<MatrixType, 'p', Order::Column>
+  >("Copy Out GPU", 1, false, false), blockSize_(blockSize) {}
 
   void execute(std::shared_ptr<CudaMatrixBlockData<MatrixType, 'p'>> ptr) override {
     auto ret = ptr->copyToCPUMemory(this->stream());
@@ -40,8 +44,10 @@ class CudaCopyOutGpu
     this->addResult(ret);
   }
 
-  std::shared_ptr<hh::AbstractTask<MatrixBlockData<MatrixType, 'p', Order::Column>,
-                                   CudaMatrixBlockData<MatrixType, 'p'>>> copy() override {
+  std::shared_ptr<hh::AbstractTask<
+      1,
+      CudaMatrixBlockData<MatrixType, 'p'>, MatrixBlockData<MatrixType, 'p', Order::Column>>
+  > copy() override {
     return std::make_shared<CudaCopyOutGpu>(this->blockSize_);
   }
 

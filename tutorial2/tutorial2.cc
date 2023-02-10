@@ -109,10 +109,11 @@ int main(int argc, char **argv) {
 
   // Declaring and instantiating the graph
   hh::Graph<
-      MatrixBlockData<MatrixType, 'c', Ord>,
+      3,
       MatrixData<MatrixType, 'a', Ord>,
       MatrixData<MatrixType, 'b', Ord>,
-      MatrixData<MatrixType, 'c', Ord>>
+      MatrixData<MatrixType, 'c', Ord>,
+      MatrixBlockData<MatrixType, 'c', Ord>>
       graphHadamard("Tutorial 2 : Hadamard Product With State");
 
   // Declaring and instantiating the tasks
@@ -126,26 +127,27 @@ int main(int argc, char **argv) {
   auto inputstateManager =
       std::make_shared<
           hh::StateManager<
-              TripletMatrixBlockData<MatrixType, Ord>,
+              3,
               MatrixBlockData<MatrixType, 'a', Ord>,
               MatrixBlockData<MatrixType, 'b', Ord>,
-              MatrixBlockData<MatrixType, 'c', Ord>>>("Block State Manager", inputState);
+              MatrixBlockData<MatrixType, 'c', Ord>,
+              TripletMatrixBlockData<MatrixType, Ord>>>(inputState, "Block State Manager");
 
   // Set The hadamard task as the task that will be connected to the graph inputs
-  graphHadamard.input(taskTraversalA);
-  graphHadamard.input(taskTraversalB);
-  graphHadamard.input(taskTraversalC);
+  graphHadamard.inputs(taskTraversalA);
+  graphHadamard.inputs(taskTraversalB);
+  graphHadamard.inputs(taskTraversalC);
 
   // Link the traversal tasks to the input state manager
-  graphHadamard.addEdge(taskTraversalA, inputstateManager);
-  graphHadamard.addEdge(taskTraversalB, inputstateManager);
-  graphHadamard.addEdge(taskTraversalC, inputstateManager);
+  graphHadamard.edges(taskTraversalA, inputstateManager);
+  graphHadamard.edges(taskTraversalB, inputstateManager);
+  graphHadamard.edges(taskTraversalC, inputstateManager);
 
   // Link the input state manager to the hadamard product
-  graphHadamard.addEdge(inputstateManager, hadamardProduct);
+  graphHadamard.edges(inputstateManager, hadamardProduct);
 
   // Set The hadamard task as the task that will be connected to the graph output
-  graphHadamard.output(hadamardProduct);
+  graphHadamard.outputs(hadamardProduct);
 
   // Execute the graph
   graphHadamard.executeGraph();
@@ -158,8 +160,10 @@ int main(int argc, char **argv) {
   // Notify the graph that no more data will be sent
   graphHadamard.finishPushingData();
 
-  // Loop over the different resulting block of C here we are just interested by the final result
-//  while (auto blockResults = graphHadamard.getBlockingResult()) {std::cout << *blockResult << std::endl;}
+  // Loop over the different resulting block of C here we are just interested in the final result
+//  while (auto blockResultVariant = graphHadamard.getBlockingResult()) {
+//    std::cout << *(std::get<std::shared_ptr<MatrixBlockData<MatrixType, 'c', Ord>>>(*blockResultVariant)) << std::endl;
+//  }
 
   // Wait for everything to be processed
   graphHadamard.waitForTermination();

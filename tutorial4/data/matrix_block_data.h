@@ -91,10 +91,10 @@ class MatrixBlockData {
 
     leadingDimension_ = matrix.leadingDimension();
     fullMatrixData_ = matrix.matrixData();
-    if (Ord == Order::Row) {
+    if(Ord == Order::Row){
       blockData_ =
           matrix.matrixData() + (rowIdx * matrix.blockSize()) * matrix.leadingDimension() + colIdx * matrix.blockSize();
-    } else {
+    }else{
       blockData_ =
           matrix.matrixData() + (colIdx * matrix.blockSize()) * matrix.leadingDimension() + rowIdx * matrix.blockSize();
     }

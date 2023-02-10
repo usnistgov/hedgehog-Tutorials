@@ -29,14 +29,13 @@
 #include "task/matrix_row_traversal_task.h"
 #include "task/matrix_column_traversal_task.h"
 
-#include "state/output_state.h"
+#include "cuda_tasks/cuda_copy_in_gpu.h"
+#include "cuda_tasks/cuda_copy_out_gpu.h"
+#include "cuda_tasks/cuda_product_task.h"
 
+#include "state/cuda_input_block_state.h"
 #include "state/partial_computation_state.h"
 #include "state/partial_computation_state_manager.h"
-
-#include "graph/cuda_computation_graph.h"
-
-#include "execution_pipeline/multi_gpu_exec_pipeline.h"
 
 class SizeConstraint : public TCLAP::Constraint<size_t> {
  public:
@@ -76,9 +75,6 @@ int main(int argc, char **argv) {
       numberThreadProduct = 0,
       numberThreadAddition = 0;
 
-  std::vector<int>
-      deviceIds = {};
-
   // Allocate matrices
   MatrixType
       *dataA = nullptr,
@@ -98,11 +94,8 @@ int main(int argc, char **argv) {
     cmd.add(blockArg);
     TCLAP::ValueArg<size_t> productArg("x", "product", "Product task's number of threads.", false, 3, &sc);
     cmd.add(productArg);
-    TCLAP::ValueArg<size_t> additionArg("a", "addition", "Addiction task's number of threads.", false, 3, &sc);
+    TCLAP::ValueArg<size_t> additionArg("a", "addition", "Addition task's number of threads.", false, 3, &sc);
     cmd.add(additionArg);
-    TCLAP::MultiArg<int> deviceIdsArg(
-        "d", "deviceids", "List of device Ids in which the computation will be decomposed.", false, "integer");
-    cmd.add(deviceIdsArg);
 
     cmd.parse(argc, argv);
 
@@ -111,18 +104,8 @@ int main(int argc, char **argv) {
     p = pArg.getValue();
     numberThreadAddition = additionArg.getValue();
     numberThreadProduct = productArg.getValue();
-
     blockSize = blockArg.getValue();
     if (blockSize == 0) { blockSize = 1; }
-
-    deviceIds = deviceIdsArg.getValue();
-    if (deviceIds.empty()) {
-      int numberGPUSAvailable = 0;
-      checkCudaErrors(cudaGetDeviceCount(&numberGPUSAvailable));
-      deviceIds.assign(numberGPUSAvailable, 0);
-      std::iota(deviceIds.begin(), deviceIds.end(), 0);
-    }
-
   } catch (TCLAP::ArgException &e)  // catch any exceptions
   { std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
 
@@ -150,19 +133,32 @@ int main(int argc, char **argv) {
   pBlocks = std::ceil(p / blockSize) + (p % blockSize == 0 ? 0 : 1);
 
   // Graph
-  // Global Graph
   auto matrixMultiplicationGraph =
-      hh::Graph<MatrixBlockData<MatrixType, 'c', Ord>,
-                MatrixData<MatrixType, 'a', Ord>, MatrixData<MatrixType, 'b', Ord>, MatrixData<MatrixType, 'c', Ord>>
-          ("Matrix Multiplication Graph");
+      hh::Graph<
+          3,
+          MatrixData<MatrixType, 'a', Ord>, MatrixData<MatrixType, 'b', Ord>, MatrixData<MatrixType, 'c', Ord>,
+          MatrixBlockData<MatrixType, 'c', Ord>
+      >("Matrix Multiplication Graph");
 
-  // GPU Graph
-  auto cudaMatrixMultiplication = std::make_shared<CUDAComputationGraph<MatrixType>>(n, m, p,
-                                                                                     blockSize, numberThreadProduct);
+  // Cuda tasks
+  // Tasks
+  auto copyInATask = std::make_shared<CudaCopyInGpu<MatrixType, 'a'>>(pBlocks, blockSize, n);
+  auto copyInBTask = std::make_shared<CudaCopyInGpu<MatrixType, 'b'>>(nBlocks, blockSize, m);
+  auto productTask = std::make_shared<CudaProductTask<MatrixType>>(p, numberThreadProduct);
+  auto copyOutTask = std::make_shared<CudaCopyOutGpu<MatrixType>>(blockSize);
 
-  // Execution Pipeline
-  auto executionPipeline =
-      std::make_shared<MultiGPUExecPipeline<MatrixType>>(cudaMatrixMultiplication, deviceIds.size(), deviceIds);
+  // MemoryManagers
+  auto cudaMemoryManagerA =
+      std::make_shared<hh::StaticMemoryManager<CudaMatrixBlockData<MatrixType, 'a'>, size_t>>(nBlocks + 4, blockSize);
+  auto cudaMemoryManagerB =
+      std::make_shared<hh::StaticMemoryManager<CudaMatrixBlockData<MatrixType, 'b'>, size_t>>(pBlocks + 4, blockSize);
+  auto cudaMemoryManagerProduct =
+      std::make_shared<hh::StaticMemoryManager<CudaMatrixBlockData<MatrixType, 'p'>, size_t>>(8, blockSize);
+
+  // Connect the memory manager
+  productTask->connectMemoryManager(cudaMemoryManagerProduct);
+  copyInATask->connectMemoryManager(cudaMemoryManagerA);
+  copyInBTask->connectMemoryManager(cudaMemoryManagerB);
 
   // Tasks
   auto taskTraversalA =
@@ -175,37 +171,48 @@ int main(int argc, char **argv) {
       std::make_shared<AdditionTask<MatrixType, Ord>>(numberThreadAddition);
 
   // State
+  auto stateInputBlock =
+      std::make_shared<CudaInputBlockState<MatrixType>>(nBlocks, mBlocks, pBlocks);
   auto statePartialComputation =
-      std::make_shared<PartialComputationState<MatrixType, Ord>>(nBlocks, pBlocks, nBlocks * mBlocks * pBlocks);
-  auto stateOutput =
-      std::make_shared<OutputState<MatrixType, Ord>>(nBlocks, pBlocks, mBlocks);
+      std::make_shared<PartialComputationState<MatrixType, Ord>>(nBlocks, pBlocks, nBlocks * mBlocks * pBlocks + 1);
 
-  // State Manager
+  // StateManager
+  auto stateManagerInputBlock =
+      std::make_shared<hh::StateManager<
+          2,
+          CudaMatrixBlockData<MatrixType, 'a'>, CudaMatrixBlockData<MatrixType, 'b'>,
+          std::pair<
+              std::shared_ptr<CudaMatrixBlockData<MatrixType, 'a'>>,
+              std::shared_ptr<CudaMatrixBlockData<MatrixType, 'b'>>>
+      >>(stateInputBlock, "Input State Manager");
   auto stateManagerPartialComputation =
       std::make_shared<PartialComputationStateManager<MatrixType, Ord>>(statePartialComputation);
-  auto stateManagerOutputBlock =
-      std::make_shared<hh::StateManager<
-          MatrixBlockData<MatrixType, 'c', Ord>,
-          MatrixBlockData<MatrixType, 'c', Ord>>>("Output State Manager", stateOutput);
 
   // Build the graph
-  matrixMultiplicationGraph.input(taskTraversalA);
-  matrixMultiplicationGraph.input(taskTraversalB);
-  matrixMultiplicationGraph.input(taskTraversalC);
+  matrixMultiplicationGraph.inputs(taskTraversalA);
+  matrixMultiplicationGraph.inputs(taskTraversalB);
+  matrixMultiplicationGraph.inputs(taskTraversalC);
 
-  // Send the blocks to GPU Graph
-  matrixMultiplicationGraph.addEdge(taskTraversalA, executionPipeline);
-  matrixMultiplicationGraph.addEdge(taskTraversalB, executionPipeline);
+  // Copy the blocks to the device (NVIDIA GPU)
+  matrixMultiplicationGraph.edges(taskTraversalA, copyInATask);
+  matrixMultiplicationGraph.edges(taskTraversalB, copyInBTask);
 
-  // Get back the blocks out the GPU Graph
-  matrixMultiplicationGraph.addEdge(executionPipeline, stateManagerPartialComputation);
+  // Connect to the State manager to wait for compatible block of A and B
+  matrixMultiplicationGraph.edges(copyInATask, stateManagerInputBlock);
+  matrixMultiplicationGraph.edges(copyInBTask, stateManagerInputBlock);
+
+  // Do the CUDA product task
+  matrixMultiplicationGraph.edges(stateManagerInputBlock, productTask);
+
+  // Copy out the temporary block to the CPU for accumulation after the product
+  matrixMultiplicationGraph.edges(productTask, copyOutTask);
+  matrixMultiplicationGraph.edges(copyOutTask, stateManagerPartialComputation);
 
   // Use the same graph for the accumulation
-  matrixMultiplicationGraph.addEdge(taskTraversalC, stateManagerPartialComputation);
-  matrixMultiplicationGraph.addEdge(stateManagerPartialComputation, additionTask);
-  matrixMultiplicationGraph.addEdge(additionTask, stateManagerPartialComputation);
-  matrixMultiplicationGraph.addEdge(additionTask, stateManagerOutputBlock);
-  matrixMultiplicationGraph.output(stateManagerOutputBlock);
+  matrixMultiplicationGraph.edges(taskTraversalC, stateManagerPartialComputation);
+  matrixMultiplicationGraph.edges(stateManagerPartialComputation, additionTask);
+  matrixMultiplicationGraph.edges(additionTask, stateManagerPartialComputation);
+  matrixMultiplicationGraph.outputs(stateManagerPartialComputation);
 
   // Execute the graph
   matrixMultiplicationGraph.executeGraph();
@@ -224,9 +231,8 @@ int main(int argc, char **argv) {
   //Print the result matrix
   std::cout << *matrixC << std::endl;
 
-  matrixMultiplicationGraph
-      .createDotFile("Tutorial5MatrixMultiplicationExecutionPipeline.dot", hh::ColorScheme::EXECUTION,
-                     hh::StructureOptions::ALL);
+  matrixMultiplicationGraph.createDotFile("Tutorial5CUDAMatrixMultiplicationCycle.dot", hh::ColorScheme::EXECUTION,
+                                          hh::StructureOptions::NONE);
 
   // Deallocate the Matrices
   delete[] dataA;

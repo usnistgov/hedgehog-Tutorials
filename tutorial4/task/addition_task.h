@@ -26,18 +26,16 @@
 
 template<class Type, Order Ord = Order::Row>
 class AdditionTask : public hh::AbstractTask<
-    MatrixBlockData<Type, 'c', Ord>,
-    std::pair<
-        std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>,
-        std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>
-    >> {
+    1,
+    std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>, std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>,
+    MatrixBlockData<Type, 'c', Ord>> {
 
  public:
   explicit AdditionTask(size_t numberThreads) :
       hh::AbstractTask<
-          MatrixBlockData<Type, 'c', Ord>,
-          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>, std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>
-          >>("Addition Task", numberThreads) {}
+          1,
+          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>, std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>,
+          MatrixBlockData<Type, 'c', Ord>>("Addition Task", numberThreads) {}
 
   virtual ~AdditionTask() = default;
 
@@ -67,9 +65,10 @@ class AdditionTask : public hh::AbstractTask<
     this->addResult(c);
   }
 
-  std::shared_ptr<hh::AbstractTask<MatrixBlockData<Type, 'c', Ord>,
-                                   std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>,
-                                         std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>>> copy() override {
+  std::shared_ptr<hh::AbstractTask<
+      1,
+      std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>, std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>,
+      MatrixBlockData<Type, 'c', Ord>>> copy() override {
     return std::make_shared<AdditionTask>(this->numberThreads());
   }
 };

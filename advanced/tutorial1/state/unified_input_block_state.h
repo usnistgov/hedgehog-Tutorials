@@ -12,8 +12,9 @@
 
 template<class Type>
 class CudaInputBlockState : public hh::AbstractState<
-    std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>,
-    UnifiedMatrixBlockData<Type, 'a'>, UnifiedMatrixBlockData<Type, 'b'>
+    2,
+    UnifiedMatrixBlockData<Type, 'a'>, UnifiedMatrixBlockData<Type, 'b'>,
+    std::pair<std::shared_ptr<UnifiedMatrixBlockData<Type, 'a'>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>
 > {
  private:
   size_t
@@ -58,7 +59,7 @@ class CudaInputBlockState : public hh::AbstractState<
             std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>>();
         res->first = ptr;
         res->second = bB;
-        this->push(res);
+        this->addResult(res);
       }
     }
   }
@@ -76,7 +77,7 @@ class CudaInputBlockState : public hh::AbstractState<
             std::shared_ptr<UnifiedMatrixBlockData<Type, 'b'>>>>();
         res->first = bA;
         res->second = ptr;
-        this->push(res);
+        this->addResult(res);
       }
     }
   }

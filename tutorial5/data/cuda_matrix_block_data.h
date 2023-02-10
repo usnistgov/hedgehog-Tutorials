@@ -28,7 +28,7 @@
 
 template<class Type, char Id>
 class CudaMatrixBlockData : public MatrixBlockData<Type, Id, Order::Column>,
-                            public hh::MemoryData<CudaMatrixBlockData<Type, Id>> {
+                            public hh::ManagedMemory {
  private:
   size_t
       ttl_ = 0;
@@ -104,7 +104,7 @@ class CudaMatrixBlockData : public MatrixBlockData<Type, Id, Order::Column>,
   }
 
   void ttl(size_t ttl) { ttl_ = ttl; }
-  void used() override { --this->ttl_; }
+  void postProcess() override { --this->ttl_; }
   bool canBeRecycled() override { return this->ttl_ == 0; }
 
   friend std::ostream &operator<<(std::ostream &os, CudaMatrixBlockData const &data) {

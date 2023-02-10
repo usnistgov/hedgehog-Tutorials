@@ -109,17 +109,17 @@ int main(int argc, char **argv) {
   std::cout << matrixB << std::endl;
 
   // Declaring and instantiating the graph
-  hh::Graph<MatrixBlockData<MatrixType, 'c', Ord>, TripletMatrixBlockData<MatrixType, Ord>>
+  hh::Graph<1, TripletMatrixBlockData<MatrixType, Ord>, MatrixBlockData<MatrixType, 'c', Ord>>
       graphHadamard("Tutorial 1 : Hadamard Product");
 
   // Declaring and instantiating the hadamard task
   auto hadamardProduct = std::make_shared<HadamardProduct<MatrixType, Ord>>("Hadamard Product", numberThreadHadamard);
 
   // Set The hadamard task as the task that will be connected to the graph inputs
-  graphHadamard.input(hadamardProduct);
+  graphHadamard.inputs(hadamardProduct);
 
   // Set The hadamard task as the task that will be connected to the graph output
-  graphHadamard.output(hadamardProduct);
+  graphHadamard.outputs(hadamardProduct);
 
   // Execute the graph
   graphHadamard.executeGraph();
@@ -141,8 +141,10 @@ int main(int argc, char **argv) {
   // Notify the graph that no more data will be sent
   graphHadamard.finishPushingData();
 
-  // Loop over the different resulting block of C here we are just interested by the final result
-//  while (auto blockResults = graphHadamard.getBlockingResult()) {std::cout << *blockResult << std::endl;}
+  // Loop over the different resulting block of C here we are just interested in the final result
+  while (auto blockResultVariant = graphHadamard.getBlockingResult()) {
+    std::cout << *(std::get<std::shared_ptr<MatrixBlockData<MatrixType, 'c', Ord>>>(*blockResultVariant)) << std::endl;
+  }
 
   // Wait for everything to be processed
   graphHadamard.waitForTermination();

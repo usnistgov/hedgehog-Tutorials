@@ -26,8 +26,10 @@
 
 template<class Type>
 class CudaProductTask : public hh::AbstractCUDATask<
-    CudaMatrixBlockData<Type, 'p'>,
-    std::pair<std::shared_ptr<CudaMatrixBlockData<Type, 'a'>>, std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>> {
+    1,
+    std::pair<std::shared_ptr<CudaMatrixBlockData<Type, 'a'>>, std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>,
+    CudaMatrixBlockData<Type, 'p'>
+> {
  private:
   size_t
       countPartialComputation_ = 0;
@@ -38,8 +40,9 @@ class CudaProductTask : public hh::AbstractCUDATask<
  public:
   explicit CudaProductTask(size_t countPartialComputation, size_t numberThreadsProduct = 1)
       : hh::AbstractCUDATask<
-      CudaMatrixBlockData<Type, 'p'>,
-      std::pair<std::shared_ptr<CudaMatrixBlockData<Type, 'a'>>, std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>
+      1,
+      std::pair<std::shared_ptr<CudaMatrixBlockData<Type, 'a'>>, std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>,
+      CudaMatrixBlockData<Type, 'p'>
   >("CUDA Product Task", numberThreadsProduct, false, false),
         countPartialComputation_(countPartialComputation) {}
 
@@ -59,7 +62,7 @@ class CudaProductTask : public hh::AbstractCUDATask<
         beta = 0.;
     auto matA = ptr->first;
     auto matB = ptr->second;
-    auto res = this->getManagedMemory();
+    auto res = std::dynamic_pointer_cast<CudaMatrixBlockData<Type, 'p'>>(this->getManagedMemory());
 
     res->rowIdx(matA->rowIdx());
     res->colIdx(matB->colIdx());
@@ -68,7 +71,7 @@ class CudaProductTask : public hh::AbstractCUDATask<
     res->leadingDimension(matA->blockSizeHeight());
     res->ttl(1);
 
-    if constexpr(std::is_same<Type, float>::value) {
+    if constexpr (std::is_same<Type, float>::value) {
       checkCudaErrors(
           cublasSgemm_v2(handle_, CUBLAS_OP_N, CUBLAS_OP_N,
                          matA->blockSizeHeight(), matB->blockSizeWidth(), matA->blockSizeWidth(), &alpha,
@@ -94,11 +97,12 @@ class CudaProductTask : public hh::AbstractCUDATask<
     matB->returnToMemoryManager();
     this->addResult(res);
   }
-  std::shared_ptr<hh::AbstractTask<CudaMatrixBlockData<Type, 'p'>,
-                                   std::pair<std::shared_ptr<CudaMatrixBlockData<Type, 'a'>>,
-                                         std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>>> copy() override {
+  std::shared_ptr<hh::AbstractTask<
+      1,
+      std::pair<std::shared_ptr<CudaMatrixBlockData<Type, 'a'>>, std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>,
+      CudaMatrixBlockData<Type, 'p'>>> copy() override {
     return std::make_shared<CudaProductTask>(countPartialComputation_, this->numberThreads());
   }
 };
 
-#endif //CPUMM_CUDA_PRODUCT_TASK_H
+#endif //TUTORIAL5_CUDA_PRODUCT_TASK_H

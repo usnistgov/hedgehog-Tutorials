@@ -12,18 +12,24 @@
 template<class Type>
 class PartialComputationStateManager
     : public hh::StateManager<
-        std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>,
+        2,
         MatrixBlockData<Type, 'c', Order::Column>,
-        UnifiedMatrixBlockData<Type, 'p'>
+        UnifiedMatrixBlockData<Type, 'p'>,
+        std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
+                  std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>
     > {
  public:
   explicit PartialComputationStateManager(std::shared_ptr<PartialComputationState<Type>> const &state) :
-      hh::StateManager<std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
-          std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>,
-          MatrixBlockData<Type, 'c', Order::Column>,
-          UnifiedMatrixBlockData<Type, 'p'>>("Partial Computation State Manager", state, false) {}
+      hh::StateManager<2,
+                       MatrixBlockData<Type, 'c', Order::Column>,
+                       UnifiedMatrixBlockData<Type, 'p'>,
+                       std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
+                                 std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>>(
+          state, "Partial Computation State Manager") {}
 
-  bool canTerminate() override {
+
+
+  [[nodiscard]] bool canTerminate() const override {
     this->state()->lock();
     auto ret = std::dynamic_pointer_cast<PartialComputationState<Type>>(this->state())->isDone();
     this->state()->unlock();

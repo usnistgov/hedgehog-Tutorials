@@ -26,8 +26,9 @@
 
 template<class Type, Order Ord>
 class BlockState : public hh::AbstractState<
-    TripletMatrixBlockData<Type, Ord>,
-    MatrixBlockData<Type, 'a', Ord>, MatrixBlockData<Type, 'b', Ord>, MatrixBlockData<Type, 'c', Ord>> {
+    3,
+    MatrixBlockData<Type, 'a', Ord>, MatrixBlockData<Type, 'b', Ord>, MatrixBlockData<Type, 'c', Ord>,
+    TripletMatrixBlockData<Type, Ord>> {
 
  private:
   std::vector<std::shared_ptr<MatrixBlockData<Type, 'a', Ord>>> gridMatrixA_ = {};
@@ -52,18 +53,18 @@ class BlockState : public hh::AbstractState<
     std::shared_ptr<MatrixBlockData<Type, 'b', Ord>> blockB = nullptr;
     std::shared_ptr<MatrixBlockData<Type, 'c', Ord>> blockC = nullptr;
     auto
-      rowIdx = ptr->rowIdx(),
-      colIdx = ptr->colIdx();
+        rowIdx = ptr->rowIdx(),
+        colIdx = ptr->colIdx();
 
-    if((blockB = matrixB(rowIdx, colIdx)) && (blockC = matrixC(rowIdx, colIdx))){
+    if ((blockB = matrixB(rowIdx, colIdx)) && (blockC = matrixC(rowIdx, colIdx))) {
       resetB(rowIdx, colIdx);
       resetC(rowIdx, colIdx);
       auto triplet = std::make_shared<TripletMatrixBlockData<Type, Ord>>();
       triplet->a_ = ptr;
       triplet->b_ = blockB;
       triplet->c_ = blockC;
-      this->push(triplet);
-    }else{
+      this->addResult(triplet);
+    } else {
       matrixA(ptr);
     }
   }
@@ -75,15 +76,15 @@ class BlockState : public hh::AbstractState<
         rowIdx = ptr->rowIdx(),
         colIdx = ptr->colIdx();
 
-    if((blockA = matrixA(rowIdx, colIdx)) && (blockC = matrixC(rowIdx, colIdx))){
+    if ((blockA = matrixA(rowIdx, colIdx)) && (blockC = matrixC(rowIdx, colIdx))) {
       resetA(rowIdx, colIdx);
       resetC(rowIdx, colIdx);
       auto triplet = std::make_shared<TripletMatrixBlockData<Type, Ord>>();
       triplet->a_ = blockA;
       triplet->b_ = ptr;
       triplet->c_ = blockC;
-      this->push(triplet);
-    }else{
+      this->addResult(triplet);
+    } else {
       matrixB(ptr);
     }
   }
@@ -95,15 +96,15 @@ class BlockState : public hh::AbstractState<
         rowIdx = ptr->rowIdx(),
         colIdx = ptr->colIdx();
 
-    if((blockA = matrixA(rowIdx, colIdx)) && (blockB = matrixB(rowIdx, colIdx))){
+    if ((blockA = matrixA(rowIdx, colIdx)) && (blockB = matrixB(rowIdx, colIdx))) {
       resetA(rowIdx, colIdx);
       resetB(rowIdx, colIdx);
       auto triplet = std::make_shared<TripletMatrixBlockData<Type, Ord>>();
       triplet->a_ = blockA;
       triplet->b_ = blockB;
       triplet->c_ = ptr;
-      this->push(triplet);
-    }else{
+      this->addResult(triplet);
+    } else {
       matrixC(ptr);
     }
   }
@@ -121,19 +122,19 @@ class BlockState : public hh::AbstractState<
     return gridMatrixC_[i * gridWidth_ + j];
   }
 
-  void matrixA(std::shared_ptr<MatrixBlockData<Type, 'a', Ord>> blockA){
+  void matrixA(std::shared_ptr<MatrixBlockData<Type, 'a', Ord>> blockA) {
     gridMatrixA_[blockA->rowIdx() * gridWidth_ + blockA->colIdx()] = blockA;
   }
 
-  void matrixB(std::shared_ptr<MatrixBlockData<Type, 'b', Ord>> blockB){
+  void matrixB(std::shared_ptr<MatrixBlockData<Type, 'b', Ord>> blockB) {
     gridMatrixB_[blockB->rowIdx() * gridWidth_ + blockB->colIdx()] = blockB;
   }
 
-  void matrixC(std::shared_ptr<MatrixBlockData<Type, 'c', Ord>> blockC){
+  void matrixC(std::shared_ptr<MatrixBlockData<Type, 'c', Ord>> blockC) {
     gridMatrixC_[blockC->rowIdx() * gridWidth_ + blockC->colIdx()] = blockC;
   }
-  void resetA(size_t i, size_t j){ gridMatrixA_[i * gridWidth_ + j] = nullptr; }
-  void resetB(size_t i, size_t j){ gridMatrixB_[i * gridWidth_ + j] = nullptr; }
-  void resetC(size_t i, size_t j){ gridMatrixC_[i * gridWidth_ + j] = nullptr; }
+  void resetA(size_t i, size_t j) { gridMatrixA_[i * gridWidth_ + j] = nullptr; }
+  void resetB(size_t i, size_t j) { gridMatrixB_[i * gridWidth_ + j] = nullptr; }
+  void resetC(size_t i, size_t j) { gridMatrixC_[i * gridWidth_ + j] = nullptr; }
 };
 #endif //TUTORIAL2_BLOCK_STATE_H

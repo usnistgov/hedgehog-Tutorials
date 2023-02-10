@@ -21,6 +21,6 @@
 #define TUTORIAL4_DATATYPE_H
 
 // Enum matrix ordering
-enum class Order { Row, Column };
+enum class Order {Row, Column};
 
 #endif //TUTORIAL4_DATATYPE_H

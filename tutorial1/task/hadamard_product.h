@@ -26,10 +26,10 @@
 #include "../data/triplet_matrix_block_data.h"
 
 template<class Type, Order Ord>
-class HadamardProduct : public hh::AbstractTask<MatrixBlockData<Type, 'c', Ord>, TripletMatrixBlockData<Type, Ord>> {
+class HadamardProduct : public hh::AbstractTask<1, TripletMatrixBlockData<Type, Ord>, MatrixBlockData<Type, 'c', Ord>> {
  public:
-  HadamardProduct(std::string_view const &name, size_t numberThreads)
-      : hh::AbstractTask<MatrixBlockData<Type, 'c', Ord>, TripletMatrixBlockData<Type, Ord>>(name, numberThreads) {}
+  HadamardProduct(std::string const &name, size_t numberThreads)
+      : hh::AbstractTask<1, TripletMatrixBlockData<Type, Ord>, MatrixBlockData<Type, 'c', Ord>>(name, numberThreads) {}
 
   void execute(std::shared_ptr<TripletMatrixBlockData<Type, Ord>> triplet) override {
     // Get the block from the triplet
@@ -68,8 +68,8 @@ class HadamardProduct : public hh::AbstractTask<MatrixBlockData<Type, 'c', Ord>,
     this->addResult(blockC);
   }
 
-  std::shared_ptr<hh::AbstractTask<MatrixBlockData<Type, 'c', Ord>,
-                                   TripletMatrixBlockData<Type, Ord>>> copy() override {
+  std::shared_ptr<hh::AbstractTask<1, TripletMatrixBlockData<Type, Ord>, MatrixBlockData<Type, 'c', Ord>>>
+  copy() override {
     return std::make_shared<HadamardProduct>(this->name(), this->numberThreads());
   }
 };

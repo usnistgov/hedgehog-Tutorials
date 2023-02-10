@@ -221,13 +221,12 @@ public:
 	
 	virtual void reset();
 
-private:
-	/**
-	 * Prevent accidental copying
-	 */
-	MultiArg<T>(const MultiArg<T>& rhs);
-	MultiArg<T>& operator=(const MultiArg<T>& rhs);
-
+//private:
+//	/**
+//	 * Prevent accidental copying
+//	 */
+//	MultiArg<T>(const MultiArg<T>& rhs);
+//	MultiArg<T>& operator=(const MultiArg<T>& rhs);
 };
 
 template<class T>

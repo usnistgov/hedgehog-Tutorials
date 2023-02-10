@@ -10,26 +10,26 @@
 
 template<class MatrixType>
 class MultiGPUExecPipeline : public hh::AbstractExecutionPipeline<
-    UnifiedMatrixBlockData<MatrixType, 'p'>,
+    2,
     UnifiedMatrixBlockData<MatrixType, 'a'>,
-    UnifiedMatrixBlockData<MatrixType, 'b'>> {
+    UnifiedMatrixBlockData<MatrixType, 'b'>,
+    UnifiedMatrixBlockData<MatrixType, 'p'>> {
  private:
   size_t
       numberGraphDuplication_ = 0;
 
  public:
   MultiGPUExecPipeline(std::shared_ptr<
-      hh::Graph<UnifiedMatrixBlockData<MatrixType, 'p'>,
-          UnifiedMatrixBlockData<MatrixType, 'a'>,
-          UnifiedMatrixBlockData<MatrixType, 'b'>>> const &graph,
-                       size_t const &numberGraphDuplications,
+      hh::Graph<2,
+                UnifiedMatrixBlockData<MatrixType, 'a'>,
+                UnifiedMatrixBlockData<MatrixType, 'b'>,
+                UnifiedMatrixBlockData<MatrixType, 'p'>>> const &graph,
                        std::vector<int> const &deviceIds) : hh::AbstractExecutionPipeline<
-      UnifiedMatrixBlockData<MatrixType, 'p'>,
+      2,
       UnifiedMatrixBlockData<MatrixType, 'a'>,
-      UnifiedMatrixBlockData<MatrixType, 'b'>>("Cuda Execution Pipeline",
-                                                       graph,
-                                                       numberGraphDuplications,
-                                                       deviceIds), numberGraphDuplication_(numberGraphDuplications) {}
+      UnifiedMatrixBlockData<MatrixType, 'b'>,
+      UnifiedMatrixBlockData<MatrixType, 'p'>>(graph, deviceIds, "Cuda Execution Pipeline"),
+                                                            numberGraphDuplication_(deviceIds.size()) {}
   virtual ~MultiGPUExecPipeline() = default;
 
   bool sendToGraph(

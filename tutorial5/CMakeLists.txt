@@ -1,4 +1,4 @@
-add_executable(tutorial5_matrix_multiplication_Multi_GPU
+add_executable(tutorial5_matrix_multiplication_GPU_and_memory_management
 		tutorial5.cc
 
 		data/data_type.h
@@ -7,8 +7,7 @@ add_executable(tutorial5_matrix_multiplication_Multi_GPU
 		data/cuda_matrix_block_data.h
 
 		state/cuda_input_block_state.h
-		state/output_state.h
-		state/partial_computation_state.h
+        state/partial_computation_state.h
 		state/partial_computation_state_manager.h
 
 		cuda_tasks/cuda_copy_in_gpu.h
@@ -21,24 +20,20 @@ add_executable(tutorial5_matrix_multiplication_Multi_GPU
 
 		utils/cuda_utils.h
 
-		graph/cuda_computation_graph.h
-
-		execution_pipeline/multi_gpu_exec_pipeline.h
-
 		${tclap_headers}
 		)
 
-target_compile_definitions(tutorial5_matrix_multiplication_Multi_GPU PUBLIC
+target_compile_definitions(tutorial5_matrix_multiplication_GPU_and_memory_management PUBLIC
 		HH_USE_CUDA)
 
-target_link_libraries(tutorial5_matrix_multiplication_Multi_GPU
+target_link_libraries(tutorial5_matrix_multiplication_GPU_and_memory_management
 		${Hedgehog_LIBRARIES}
 		${CUDA_LIBRARIES}
 		cuda)
 
-target_include_directories(tutorial5_matrix_multiplication_Multi_GPU PUBLIC
+target_include_directories(tutorial5_matrix_multiplication_GPU_and_memory_management PUBLIC
 		${Hedgehog_INCLUDE_DIR}
 		${CUDA_INCLUDE_DIRS})
 
-CUDA_ADD_CUBLAS_TO_TARGET(tutorial5_matrix_multiplication_Multi_GPU)
+CUDA_ADD_CUBLAS_TO_TARGET(tutorial5_matrix_multiplication_GPU_and_memory_management)
 

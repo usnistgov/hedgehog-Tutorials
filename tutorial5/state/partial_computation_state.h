@@ -26,8 +26,10 @@
 template<class Type, Order Ord = Order::Row>
 class PartialComputationState
     : public hh::AbstractState<
+        2,
+        MatrixBlockData<Type, 'c', Ord>, MatrixBlockData<Type, 'p', Ord>,
         std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>, std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>,
-        MatrixBlockData<Type, 'c', Ord>, MatrixBlockData<Type, 'p', Ord>
+        MatrixBlockData<Type, 'c', Ord>
     > {
  private:
   size_t
@@ -41,11 +43,11 @@ class PartialComputationState
       gridMatrixC_ = {};
 
   size_t
-      ttl_ = 0;
+      ttlState_ = 0;
 
  public:
   PartialComputationState(size_t gridHeightResults, size_t gridWidthResults, size_t ttl)
-      : gridHeightResults_(gridHeightResults), gridWidthResults_(gridWidthResults), ttl_(ttl) {
+      : gridHeightResults_(gridHeightResults), gridWidthResults_(gridWidthResults), ttlState_(ttl) {
     gridPartialProduct_ =
         std::vector<std::vector<std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>>(
             gridHeightResults_ * gridWidthResults_);
@@ -58,16 +60,23 @@ class PartialComputationState
 
   void execute(std::shared_ptr<MatrixBlockData<Type, 'c', Ord>> ptr) override {
     auto i = ptr->rowIdx(), j = ptr->colIdx();
-    if (isPAvailable(i, j)) {
-      auto res = std::make_shared<
-          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>, std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>
-      >();
-      res->first = ptr;
-      res->second = partialProduct(i, j);
-      this->push(res);
-      --ttl_;
+
+    if (ttlState_ == 1) {
+      this->addResult(ptr);
+      --ttlState_;
     } else {
-      blockMatrixC(ptr);
+      if (isPAvailable(i, j)) {
+        auto res = std::make_shared<
+            std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Ord>>,
+                      std::shared_ptr<MatrixBlockData<Type, 'p', Ord>>>
+        >();
+        res->first = ptr;
+        res->second = partialProduct(i, j);
+        this->addResult(res);
+        --ttlState_;
+      } else {
+        blockMatrixC(ptr);
+      }
     }
   }
 
@@ -79,14 +88,14 @@ class PartialComputationState
       >();
       res->first = blockMatrixC(i, j);
       res->second = ptr;
-      this->push(res);
-      --ttl_;
+      this->addResult(res);
+      --ttlState_;
     } else {
       partialProduct(ptr);
     }
   }
 
-  bool isDone() { return ttl_ == 0; };
+  bool isDone() { return ttlState_ == 0; };
 
  private:
   bool isPAvailable(size_t i, size_t j) { return gridPartialProduct_[i * gridWidthResults_ + j].size() != 0; }

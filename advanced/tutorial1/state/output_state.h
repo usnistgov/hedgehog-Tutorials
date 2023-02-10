@@ -10,7 +10,7 @@
 #include "../data/matrix_block_data.h"
 
 template<class Type>
-class OutputState : public hh::AbstractState<MatrixBlockData<Type, 'c', Order::Column>, MatrixBlockData<Type, 'c', Order::Column>> {
+class OutputState : public hh::AbstractState<1, MatrixBlockData<Type, 'c', Order::Column>, MatrixBlockData<Type, 'c', Order::Column>> {
  private:
   std::vector<size_t>
       ttl_ = {};
@@ -30,7 +30,7 @@ class OutputState : public hh::AbstractState<MatrixBlockData<Type, 'c', Order::C
     auto i = ptr->rowIdx(), j = ptr->colIdx();
     --ttl_[i * gridWidthTTL_ + j];
     if (ttl_[i * gridWidthTTL_ + j] == 0) {
-      this->push(ptr);
+      this->addResult(ptr);
     }
   }
 

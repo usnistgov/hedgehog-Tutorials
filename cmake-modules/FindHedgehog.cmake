@@ -4,24 +4,29 @@
 
 
 # - Find Hedgehog includes and required compiler flags and library dependencies
-# Dependencies: C++11 support and threading library
+# Dependencies: C++20 support and threading library
 #
 # The Hedgehog_CXX_FLAGS should be added to the CMAKE_CXX_FLAGS
 #
 # This module defines
-#  Hedgehog_INCLUDE_DIR
+#  Hedgehog_INCLUDE_DIRS
 #  Hedgehog_LIBRARIES
 #  Hedgehog_CXX_FLAGS
 #  Hedgehog_FOUND
 #
 
-
-# Ensure C++17
-set(CMAKE_CXX_STANDARD 17)
+# Ensure C++20
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(Threads REQUIRED)
+link_libraries(Threads::Threads)
+
+option(ENABLE_CHECK_CUDA "Enable extra checks for CUDA library if found" ON)
+option(ENABLE_NVTX "Enable NVTX if CUDA is found" ON)
+
 if (MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
 endif (MSVC)
 
 # Try to found Hedgehog
@@ -35,6 +40,8 @@ FIND_PATH(Hedgehog_INCLUDE_DIR hedgehog.h
 IF (NOT Hedgehog_INCLUDE_DIR)
     SET(Hedgehog_FOUND OFF)
     MESSAGE(STATUS "Could not find Hedgehog includes. Hedgehog_FOUND now off")
+ELSE(NOT Hedgehog_INCLUDE_DIR)
+    list(APPEND Hedgehog_INCLUDE_DIRS ${Hedgehog_INCLUDE_DIR})
 ENDIF ()
 
 IF (Hedgehog_FOUND)
@@ -47,50 +54,30 @@ ELSE (Hedgehog_FOUND)
     ENDIF (Hedgehog_FIND_REQUIRED)
 ENDIF (Hedgehog_FOUND)
 
+include_directories(${Hedgehog_INCLUDE_DIRS})
+
 MARK_AS_ADVANCED(Hedgehog_INCLUDE_DIR)
 
-# Find other libraries
-find_package(Threads QUIET)
-if (Threads_FOUND)
-    if (CMAKE_USE_PTHREADS_INIT)
-        list(APPEND Hedgehog_CXX_FLAGS "-pthread")
-    endif (CMAKE_USE_PTHREADS_INIT)
-    list(APPEND Hedgehog_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
-else ()
-    if (Hedgehog_FIND_REQUIRED)
-        message(FATAL_ERROR "Unable to find threads. Hedgehog must have a threading library i.e. pthreads.")
-    else ()
-        message(STATUS "Unable to find threads. Hedgehog must have a threading library i.e. pthreads.")
-    endif ()
-    SET(Hedgehog_FOUND OFF)
-endif ()
+# Deal with cuda
 
-find_package(CUDA QUIET)
-if (CUDA_FOUND)
-    set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-    set(CUDA_NVCC_FLAGS_RELEASE -O3; -DNDEBUG)
-else ()
-    message(STATUS "Unable to find CUDA. All features won't be available.")
-endif ()
+find_package(CUDAToolkit QUIET)
 
-# Set Hedgehog_CXX_FLAGS
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(CMAKE_COMPILER_IS_CLANGXX 1)
-    set(use-libclang ON)
-endif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-
-# Set specific flags for filesystem [experimental] library
-if (CMAKE_COMPILER_IS_CLANGXX)
-    string(REGEX REPLACE bin.* "" CLANG_FOLDER ${CMAKE_CXX_COMPILER})
-    string(CONCAT FS_LIB_PATH ${CLANG_FOLDER} "lib/")
-    link_directories(${FS_LIB_PATH})
-    if (APPLE)
-        list(APPEND Hedgehog_LIBRARIES "c++fs")
-    else (APPLE)
-        list(APPEND Hedgehog_LIBRARIES "stdc++fs")
-    endif (APPLE)
-elseif (NOT MSVC)
-    list(APPEND Hedgehog_LIBRARIES "stdc++fs")
-endif (CMAKE_COMPILER_IS_CLANGXX)
-
-
+if (CUDAToolkit_FOUND)
+    message("CUDA found: ${CUDAToolkit_INCLUDE_DIRS}")
+    if (ENABLE_CHECK_CUDA)
+        message("CUDA check enabled")
+        add_definitions(-DHH_ENABLE_CHECK_CUDA)
+    else (ENABLE_CHECK_CUDA)
+        message("CUDA check disabled")
+    endif (ENABLE_CHECK_CUDA)
+    include_directories(CUDAToolkit_INCLUDE_DIRS)
+    link_libraries(CUDA::cudart CUDA::cuda_driver CUDA::cupti)
+    add_definitions(-DHH_USE_CUDA)
+    if (ENABLE_NVTX)
+        link_libraries(CUDA::nvToolsExt)
+        link_libraries(dl)
+        add_definitions(-DHH_USE_NVTX)
+    endif (ENABLE_NVTX)
+else (CUDAToolkit_FOUND)
+    message("CUDA not found, all features will not be available.")
+endif (CUDAToolkit_FOUND)

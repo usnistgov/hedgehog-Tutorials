@@ -24,8 +24,10 @@
 #include "../utils/cuda_utils.h"
 
 template<class MatrixType, char Id>
-class CudaCopyInGpu : public hh::AbstractCUDATask<CudaMatrixBlockData<MatrixType, Id>,
-                                                  MatrixBlockData<MatrixType, Id, Order::Column>> {
+class CudaCopyInGpu : public hh::AbstractCUDATask<
+    1,
+    MatrixBlockData<MatrixType, Id, Order::Column>,
+    CudaMatrixBlockData<MatrixType, Id>> {
  private:
   size_t
       blockTTL_ = 0,
@@ -34,14 +36,18 @@ class CudaCopyInGpu : public hh::AbstractCUDATask<CudaMatrixBlockData<MatrixType
 
  public:
   CudaCopyInGpu(size_t blockTTL, size_t blockSize, size_t matrixLeadingDimension)
-      : hh::AbstractCUDATask<CudaMatrixBlockData<MatrixType, Id>, MatrixBlockData<MatrixType, Id, Order::Column>>
+      : hh::AbstractCUDATask<
+      1,
+      MatrixBlockData<MatrixType, Id, Order::Column>,
+      CudaMatrixBlockData<MatrixType, Id>>
             ("Copy In GPU", 1, false, false),
         blockTTL_(blockTTL),
         blockSize_(blockSize),
         matrixLeadingDimension_(matrixLeadingDimension) {}
 
   void execute(std::shared_ptr<MatrixBlockData<MatrixType, Id, Order::Column>> ptr) override {
-    std::shared_ptr<CudaMatrixBlockData<MatrixType, Id>> block = this->getManagedMemory();
+    std::shared_ptr<CudaMatrixBlockData<MatrixType, Id>> block =
+        std::dynamic_pointer_cast<CudaMatrixBlockData<MatrixType, Id>>(this->getManagedMemory());
     block->rowIdx(ptr->rowIdx());
     block->colIdx(ptr->colIdx());
     block->blockSizeHeight(ptr->blockSizeHeight());
@@ -52,8 +58,8 @@ class CudaCopyInGpu : public hh::AbstractCUDATask<CudaMatrixBlockData<MatrixType
 
     if (ptr->leadingDimension() == block->leadingDimension()) {
       checkCudaErrors(cudaMemcpyAsync(block->blockData(), ptr->blockData(),
-                                          sizeof(MatrixType) * block->blockSizeHeight() * block->blockSizeWidth(),
-                                          cudaMemcpyHostToDevice, this->stream()));
+                                      sizeof(MatrixType) * block->blockSizeHeight() * block->blockSizeWidth(),
+                                      cudaMemcpyHostToDevice, this->stream()));
     } else {
       cublasSetMatrixAsync(
           (int) block->blockSizeHeight(), (int) block->blockSizeWidth(), sizeof(MatrixType),
@@ -66,8 +72,9 @@ class CudaCopyInGpu : public hh::AbstractCUDATask<CudaMatrixBlockData<MatrixType
     this->addResult(block);
   }
 
-  std::shared_ptr<hh::AbstractTask<CudaMatrixBlockData<MatrixType, Id>,
-                                   MatrixBlockData<MatrixType, Id, Order::Column>>> copy() override {
+  std::shared_ptr<hh::AbstractTask<1,
+                                   MatrixBlockData<MatrixType, Id, Order::Column>,
+                                   CudaMatrixBlockData<MatrixType, Id>>> copy() override {
     return std::make_shared<CudaCopyInGpu>(blockTTL_, blockSize_, matrixLeadingDimension_);
   }
 };

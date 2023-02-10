@@ -11,24 +11,24 @@
 
 template<class Type>
 class AdditionTask : public hh::AbstractTask<
-    MatrixBlockData<Type, 'c', Order::Column>,
-    std::pair<
+    1, std::pair<
         std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
-        std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>
-    >> {
+        std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>,
+    MatrixBlockData<Type, 'c', Order::Column>> {
 
  public:
   explicit AdditionTask(size_t numberThreads) :
       hh::AbstractTask<
-          MatrixBlockData<Type, 'c', Order::Column>,
-          std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>, std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>
-          >>("Addition Task", numberThreads) {}
+          1, std::pair<
+              std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
+              std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>,
+          MatrixBlockData<Type, 'c', Order::Column>>("Addition Task", numberThreads) {}
 
   virtual ~AdditionTask() = default;
 
  public:
   void execute(std::shared_ptr<std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
-      std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>> ptr) override {
+                                         std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>> ptr) override {
     auto c = ptr->first;
     auto p = ptr->second;
 
@@ -43,15 +43,16 @@ class AdditionTask : public hh::AbstractTask<
       }
     }
 
-
     p->returnToMemoryManager();
 
     this->addResult(c);
   }
 
-  std::shared_ptr<hh::AbstractTask<MatrixBlockData<Type, 'c', Order::Column>,
-      std::pair<std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
-          std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>>> copy() override {
+  std::shared_ptr<hh::AbstractTask<1,
+                                   std::pair<
+                                       std::shared_ptr<MatrixBlockData<Type, 'c', Order::Column>>,
+                                       std::shared_ptr<UnifiedMatrixBlockData<Type, 'p'>>>,
+                                   MatrixBlockData<Type, 'c', Order::Column>>> copy() override {
     return std::make_shared<AdditionTask>(this->numberThreads());
   }
 };

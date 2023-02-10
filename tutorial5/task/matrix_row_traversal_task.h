@@ -25,12 +25,10 @@
 #include "../data/matrix_data.h"
 #include "../data/matrix_block_data.h"
 
-
 template<class Type, char Id, Order Ord>
-class MatrixRowTraversalTask : public hh::AbstractTask<MatrixBlockData<Type, Id, Ord>, MatrixData<Type, Id, Ord>> {
+class MatrixRowTraversalTask : public hh::AbstractTask<1, MatrixData<Type, Id, Ord>, MatrixBlockData<Type, Id, Ord>> {
  public:
-  MatrixRowTraversalTask() : hh::AbstractTask<MatrixBlockData<Type, Id, Ord>,
-                                              MatrixData<Type, Id, Ord>>("RowTraversal") {}
+  MatrixRowTraversalTask() : hh::AbstractTask<1, MatrixData<Type, Id, Ord>, MatrixBlockData<Type, Id, Ord>>("RowTraversal") {}
   void execute(std::shared_ptr<MatrixData<Type, Id, Ord>> ptr) override {
     for (size_t iGrid = 0; iGrid < ptr->numBlocksRows(); ++iGrid) {
       for (size_t jGrid = 0; jGrid < ptr->numBlocksCols(); ++jGrid) {

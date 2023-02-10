@@ -26,8 +26,9 @@
 
 template<class Type>
 class CudaInputBlockState : public hh::AbstractState<
-    std::pair<std::shared_ptr<CudaMatrixBlockData<Type, 'a'>>, std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>,
-    CudaMatrixBlockData<Type, 'a'>, CudaMatrixBlockData<Type, 'b'>
+    2,
+    CudaMatrixBlockData<Type, 'a'>, CudaMatrixBlockData<Type, 'b'>,
+    std::pair<std::shared_ptr<CudaMatrixBlockData<Type, 'a'>>, std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>
 > {
  private:
   size_t
@@ -59,7 +60,7 @@ class CudaInputBlockState : public hh::AbstractState<
 
   virtual ~CudaInputBlockState() = default;
 
-  void execute([[maybe_unused]]std::shared_ptr<CudaMatrixBlockData<Type, 'a'>> ptr) override {
+  void execute(std::shared_ptr<CudaMatrixBlockData<Type, 'a'>> ptr) override {
     matrixA(ptr);
     for (size_t jB = 0; jB < gridWidthRight_; ++jB) {
       if (auto bB = matrixB(ptr->colIdx(), jB)) {
@@ -72,12 +73,12 @@ class CudaInputBlockState : public hh::AbstractState<
                                               std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>>();
         res->first = ptr;
         res->second = bB;
-        this->push(res);
+        this->addResult(res);
       }
     }
   }
 
-  void execute([[maybe_unused]]std::shared_ptr<CudaMatrixBlockData<Type, 'b'>> ptr) override {
+  void execute(std::shared_ptr<CudaMatrixBlockData<Type, 'b'>> ptr) override {
     matrixB(ptr);
     for (size_t iA = 0; iA < gridHeightLeft_; ++iA) {
       if (auto bA = matrixA(iA, ptr->rowIdx())) {
@@ -90,7 +91,7 @@ class CudaInputBlockState : public hh::AbstractState<
                                               std::shared_ptr<CudaMatrixBlockData<Type, 'b'>>>>();
         res->first = bA;
         res->second = ptr;
-        this->push(res);
+        this->addResult(res);
       }
     }
   }
@@ -102,7 +103,6 @@ class CudaInputBlockState : public hh::AbstractState<
       ttlA_[i * gridSharedDimension_ + j] = ttlA_[i * gridSharedDimension_ + j] - 1;
       if (ttlA_[i * gridSharedDimension_ + j] == 0) {
         gridMatrixA_[i * gridSharedDimension_ + j] = nullptr;
-
       }
     }
     return res;

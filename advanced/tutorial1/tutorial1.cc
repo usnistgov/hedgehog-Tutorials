@@ -42,7 +42,11 @@ class SizeConstraint : public TCLAP::Constraint<size_t> {
 
 template<class Type, char Id>
 std::shared_ptr<UnifiedMatrixBlockData<Type, Id>>
-allocateUnifiedMemory(size_t row, size_t col, size_t blockSizeHeight, size_t blockSizeWidth, std::uniform_real_distribution<Type> &unif,
+allocateUnifiedMemory(size_t row,
+                      size_t col,
+                      size_t blockSizeHeight,
+                      size_t blockSizeWidth,
+                      std::uniform_real_distribution<Type> &unif,
                       std::mt19937_64 &rng) {
   Type *unifiedMem;
 
@@ -53,17 +57,24 @@ allocateUnifiedMemory(size_t row, size_t col, size_t blockSizeHeight, size_t blo
                   [&unif, &rng](Type &val) { val = (Type) unif(rng); });
   }
 
-
-  auto data = std::make_shared<UnifiedMatrixBlockData<Type, Id>>(row, col, blockSizeHeight, blockSizeWidth, blockSizeHeight, unifiedMem,
-                                                            unifiedMem);
+  auto data = std::make_shared<UnifiedMatrixBlockData<Type, Id>>(row,
+                                                                 col,
+                                                                 blockSizeHeight,
+                                                                 blockSizeWidth,
+                                                                 blockSizeHeight,
+                                                                 unifiedMem,
+                                                                 unifiedMem);
   return data;
 }
 
 template<class Type, char Id>
-void copyBlock(std::shared_ptr<MatrixBlockData<Type, Id, Order::Column>> input, size_t blockSize, Type *output, size_t ld) {
+void copyBlock(std::shared_ptr<MatrixBlockData<Type, Id, Order::Column>> input,
+               size_t blockSize,
+               Type *output,
+               size_t ld) {
 
   Type *outputLocation = &output[input->colIdx() * blockSize * ld +
-                                 input->rowIdx() * blockSize];
+      input->rowIdx() * blockSize];
 
   for (size_t i = 0; i < input->blockSizeWidth(); ++i) {
     for (size_t j = 0; j < input->blockSizeHeight(); ++j) {
@@ -102,9 +113,9 @@ double computeMatrixMultiplicationGFLOPS(size_t n, size_t m, size_t p, double du
 
 template<class MatrixType>
 bool computeAndGetAccuracyMatrixMultiplication(MatrixType *matrixCResult,
-                                                 MatrixType *matrixCBase,
-                                                 size_t n,
-                                                 size_t p) {
+                                               MatrixType *matrixCBase,
+                                               size_t n,
+                                               size_t p) {
   auto
       *diff = new std::vector<MatrixType>(n * p, 0),
       *accuracyComputation = new std::vector<MatrixType>(n * p, 0),
@@ -160,9 +171,9 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
       numRetry = 1;
 
   bool
-    innerTraversal = false,
-    restrictInputMemory = true,
-    evaluateOutputTime = false;
+      innerTraversal = false,
+      restrictInputMemory = true,
+      evaluateOutputTime = false;
 
   std::vector<double>
       resultTimes = {};
@@ -203,12 +214,12 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     TCLAP::MultiArg<int> deviceIdsArg(
         "d", "deviceids", "List of device Ids in which the computation will be decomposed.", false, "integer");
     cmd.add(deviceIdsArg);
-    TCLAP::SwitchArg traversalArg("i", "inner-traversal", "Uses inner-traversal. Matrices should fit into GPU memory.", false);
+    TCLAP::SwitchArg
+        traversalArg("i", "inner-traversal", "Uses inner-traversal. Matrices should fit into GPU memory.", false);
     cmd.add(traversalArg);
-    TCLAP::SwitchArg evaluateOutputTimeArg("o", "output-time", "Evaluates the output timing for first and average.", false);
+    TCLAP::SwitchArg
+        evaluateOutputTimeArg("o", "output-time", "Evaluates the output timing for first and average.", false);
     cmd.add(evaluateOutputTimeArg);
-
-
 
     cmd.parse(argc, argv);
 
@@ -237,7 +248,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
   } catch (TCLAP::ArgException &e)  // catch any exceptions
   { std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
 
-  for (auto device :deviceIds) {
+  for (auto device : deviceIds) {
     checkCudaErrors(cudaSetDevice(device));
     checkCudaErrors(cublasInit());
   }
@@ -266,29 +277,27 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
   if (innerTraversal) {
     for (size_t i = 0; i < nBlocks; ++i) {
       size_t blockSizeHeight = blockSize;
-      if (i == nBlocks-1 && blockSizeRemainderAHeight > 0) {
+      if (i == nBlocks - 1 && blockSizeRemainderAHeight > 0) {
         blockSizeHeight = blockSizeRemainderAHeight;
       }
 
       for (size_t j = 0; j < mBlocks; ++j) {
         size_t blockSizeWidth = blockSize;
-        if (j == mBlocks-1 &&  blockSizeRemainderAWidth > 0) {
+        if (j == mBlocks - 1 && blockSizeRemainderAWidth > 0) {
           blockSizeWidth = blockSizeRemainderAWidth;
         }
         aMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'a'>(i, j, blockSizeHeight, blockSizeWidth, unif, rng));
       }
     }
-  }
-  else
-  {
+  } else {
     for (size_t j = 0; j < mBlocks; ++j) {
       size_t blockSizeWidth = blockSize;
-      if (j == mBlocks-1 &&  blockSizeRemainderAWidth > 0) {
+      if (j == mBlocks - 1 && blockSizeRemainderAWidth > 0) {
         blockSizeWidth = blockSizeRemainderAWidth;
       }
       for (size_t i = 0; i < nBlocks; ++i) {
         size_t blockSizeHeight = blockSize;
-        if (i == nBlocks-1 && blockSizeRemainderAHeight > 0) {
+        if (i == nBlocks - 1 && blockSizeRemainderAHeight > 0) {
           blockSizeHeight = blockSizeRemainderAHeight;
         }
         aMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'a'>(i, j, blockSizeHeight, blockSizeWidth, unif, rng));
@@ -299,27 +308,26 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
   if (innerTraversal) {
     for (size_t j = 0; j < pBlocks; ++j) {
       size_t blockSizeWidth = blockSize;
-      if (j == pBlocks-1 &&  blockSizeRemainderBWidth > 0) {
+      if (j == pBlocks - 1 && blockSizeRemainderBWidth > 0) {
         blockSizeWidth = blockSizeRemainderBWidth;
       }
       for (size_t i = 0; i < mBlocks; ++i) {
         size_t blockSizeHeight = blockSize;
-        if (i == mBlocks-1 && blockSizeRemainderBHeight > 0) {
+        if (i == mBlocks - 1 && blockSizeRemainderBHeight > 0) {
           blockSizeHeight = blockSizeRemainderBHeight;
         }
         bMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'b'>(i, j, blockSize, blockSize, unif, rng));
       }
     }
-  }
-  else {
+  } else {
     for (size_t i = 0; i < mBlocks; ++i) {
       size_t blockSizeHeight = blockSize;
-      if (i == mBlocks-1 && blockSizeRemainderBHeight > 0) {
+      if (i == mBlocks - 1 && blockSizeRemainderBHeight > 0) {
         blockSizeHeight = blockSizeRemainderBHeight;
       }
       for (size_t j = 0; j < pBlocks; ++j) {
         size_t blockSizeWidth = blockSize;
-        if (j == pBlocks-1 &&  blockSizeRemainderBWidth > 0) {
+        if (j == pBlocks - 1 && blockSizeRemainderBWidth > 0) {
           blockSizeWidth = blockSizeRemainderBWidth;
         }
         bMatrixData.push_back(allocateUnifiedMemory<MatrixType, 'b'>(i, j, blockSizeHeight, blockSizeWidth, unif, rng));
@@ -329,21 +337,24 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
   for (size_t i = 0; i < nBlocks; ++i) {
     size_t blockSizeHeight = blockSize;
-    if (i == nBlocks-1 && blockSizeRemainderCHeight > 0) {
+    if (i == nBlocks - 1 && blockSizeRemainderCHeight > 0) {
       blockSizeHeight = blockSizeRemainderCHeight;
     }
     for (size_t j = 0; j < pBlocks; ++j) {
       size_t blockSizeWidth = blockSize;
-      if (j == pBlocks-1 && blockSizeRemainderCWidth > 0) {
+      if (j == pBlocks - 1 && blockSizeRemainderCWidth > 0) {
         blockSizeWidth = blockSizeRemainderCWidth;
       }
       MatrixType *c = new MatrixType[blockSizeHeight * blockSizeWidth]();
-      if constexpr(isTestResults) {
-        std::for_each(c, c + (blockSizeHeight * blockSizeWidth), [&unif, &rng](MatrixType &val) { val = (MatrixType) unif(rng); });
+      if constexpr (isTestResults) {
+        std::for_each(c,
+                      c + (blockSizeHeight * blockSizeWidth),
+                      [&unif, &rng](MatrixType &val) { val = (MatrixType) unif(rng); });
       }
 
-      auto blkData = std::make_shared<MatrixBlockData<MatrixType, 'c', Order::Column>>(i, j, blockSizeHeight, blockSizeWidth,
-                                                                                       blockSizeHeight, c, c);
+      auto blkData =
+          std::make_shared<MatrixBlockData<MatrixType, 'c', Order::Column>>(i, j, blockSizeHeight, blockSizeWidth,
+                                                                            blockSizeHeight, c, c);
       cMatrixData.push_back(blkData);
     }
   }
@@ -355,18 +366,18 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
   }
   std::cout << std::endl;
 
-    for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
-    for (auto mat: aMatrixData) {
+  for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
+    for (auto mat : aMatrixData) {
       checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), mat->blockSizeWidth()
-                                                                 * mat->blockSizeHeight() * sizeof(MatrixType), cudaCpuDeviceId));
+          * mat->blockSizeHeight() * sizeof(MatrixType), cudaCpuDeviceId));
     }
 
-    for (auto mat: bMatrixData) {
+    for (auto mat : bMatrixData) {
       checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), mat->blockSizeWidth()
-                                                                  * mat->blockSizeHeight() * sizeof(MatrixType), cudaCpuDeviceId));
+          * mat->blockSizeHeight() * sizeof(MatrixType), cudaCpuDeviceId));
     }
 
-    for (auto device :deviceIds) {
+    for (auto device : deviceIds) {
       checkCudaErrors(cudaSetDevice(device));
       checkCudaErrors(cudaDeviceSynchronize());
     }
@@ -414,17 +425,22 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     // Graph
     // Global Graph
     auto matrixMultiplicationGraph =
-        hh::Graph<MatrixBlockData<MatrixType, 'c', Order::Column>,
-            UnifiedMatrixBlockData<MatrixType, 'a'>, UnifiedMatrixBlockData<MatrixType, 'b'>, MatrixBlockData<MatrixType, 'c', Order::Column>>
+        hh::Graph<
+            3,
+            UnifiedMatrixBlockData<MatrixType, 'a'>,
+            UnifiedMatrixBlockData<MatrixType, 'b'>,
+            MatrixBlockData<MatrixType, 'c', Order::Column>,
+            MatrixBlockData<MatrixType, 'c', Order::Column>
+        >
             ("Matrix Multiplication Graph");
 
     // GPU Graph
-    auto cudaMatrixMultiplication = std::make_shared<UnifiedComputationGraph<MatrixType>>(n, m, p, blockSize,
-                                                                                          numberThreadProduct, restrictInputMemory);
+    auto cudaMatrixMultiplication = std::make_shared<UnifiedComputationGraph<MatrixType>>
+        (n, m, p, blockSize, numberThreadProduct, restrictInputMemory);
 
     // Execution Pipeline
     auto executionPipeline =
-        std::make_shared<MultiGPUExecPipeline<MatrixType>>(cudaMatrixMultiplication, deviceIds.size(), deviceIds);
+        std::make_shared<MultiGPUExecPipeline<MatrixType>>(cudaMatrixMultiplication, deviceIds);
 
     // Tasks
     auto additionTask =
@@ -441,23 +457,24 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
         std::make_shared<PartialComputationStateManager<MatrixType>>(statePartialComputation);
     auto stateManagerOutputBlock =
         std::make_shared<hh::StateManager<
+            1,
             MatrixBlockData<MatrixType, 'c', Order::Column>,
-            MatrixBlockData<MatrixType, 'c', Order::Column>>>("Output State Manager", stateOutput);
+            MatrixBlockData<MatrixType, 'c', Order::Column>>>(stateOutput, "Output State Manager");
 
     // Build the graph
     // Send the blocks to GPU Graph
-    matrixMultiplicationGraph.input(executionPipeline);
-    matrixMultiplicationGraph.input(executionPipeline);
-    matrixMultiplicationGraph.input(stateManagerPartialComputation);
+    matrixMultiplicationGraph.inputs(executionPipeline);
+    matrixMultiplicationGraph.inputs(executionPipeline);
+    matrixMultiplicationGraph.inputs(stateManagerPartialComputation);
 
     // Get back the blocks out the GPU Graph
-    matrixMultiplicationGraph.addEdge(executionPipeline, stateManagerPartialComputation);
+    matrixMultiplicationGraph.edges(executionPipeline, stateManagerPartialComputation);
 
     // Use the same graph for the accumulation
-    matrixMultiplicationGraph.addEdge(stateManagerPartialComputation, additionTask);
-    matrixMultiplicationGraph.addEdge(additionTask, stateManagerPartialComputation);
-    matrixMultiplicationGraph.addEdge(additionTask, stateManagerOutputBlock);
-    matrixMultiplicationGraph.output(stateManagerOutputBlock);
+    matrixMultiplicationGraph.edges(stateManagerPartialComputation, additionTask);
+    matrixMultiplicationGraph.edges(additionTask, stateManagerPartialComputation);
+    matrixMultiplicationGraph.edges(additionTask, stateManagerOutputBlock);
+    matrixMultiplicationGraph.outputs(stateManagerOutputBlock);
 
     auto begin = std::chrono::system_clock::now();
 
@@ -466,15 +483,15 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     matrixMultiplicationGraph.executeGraph();
 
     // Push the matrices
-    for (auto data : aMatrixData) {
+    for (const auto& data : aMatrixData) {
       matrixMultiplicationGraph.pushData(data);
     }
 
-    for (auto data : bMatrixData) {
+    for (const auto& data : bMatrixData) {
       matrixMultiplicationGraph.pushData(data);
     }
 
-    for (auto data : cMatrixData) {
+    for (const auto& data : cMatrixData) {
       matrixMultiplicationGraph.pushData(data);
     }
 
@@ -490,8 +507,10 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
         resultTimes.push_back(durationItem);
         startFirstItem = std::chrono::high_resolution_clock::now();
 
-        if constexpr(isTestResults) {
-          copyBlock<MatrixType, 'c'>(res, blockSize, testHedgehog, n);
+        if constexpr (isTestResults) {
+          copyBlock<MatrixType, 'c'>(
+              std::get<std::shared_ptr<MatrixBlockData<float, 'c', Order::Column>>>(*res),
+                  blockSize, testHedgehog, n);
         }
 
       }
@@ -516,16 +535,16 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
       if constexpr (std::is_same<MatrixType, double>::value) {
         checkCudaErrors(cublasXtDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-                                          n, p, m, (double *) (&alpha),
-                                          (double *) testA, n,
-                                          (double *) testB, m,
-                                          (double *) (&beta), (double *) testResult, n));
+                                      n, p, m, (double *) (&alpha),
+                                      (double *) testA, n,
+                                      (double *) testB, m,
+                                      (double *) (&beta), (double *) testResult, n));
       } else {
         checkCudaErrors(cublasXtSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-                                          n, p, m, (float *) (&alpha),
-                                          (float *) testA, n,
-                                          (float *) testB, m,
-                                          (float *) (&beta), (float *) testResult, n));
+                                      n, p, m, (float *) (&alpha),
+                                      (float *) testA, n,
+                                      (float *) testB, m,
+                                      (float *) (&beta), (float *) testResult, n));
       }
 
       checkCudaErrors(cudaDeviceSynchronize());
@@ -538,7 +557,6 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
       }
 
       isAccurate = computeAndGetAccuracyMatrixMultiplication<MatrixType>(testHedgehog, testResult, n, p);
-
 
     }
 
@@ -555,8 +573,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     runtimes.push_back(duration);
 
     std::string experimentName = "hedgehogGPUMatMul";
-    if (innerTraversal)
-    {
+    if (innerTraversal) {
       experimentName += "Inner";
     } else {
       experimentName += "Outer";
@@ -566,11 +583,11 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
       experimentName += "NoOutput";
     }
 
-
     std::cout << experimentName << "," << deviceIds.size() << "," << numberThreadProduct << "," << numberThreadAddition
               << ","
               << n << "," << m << "," << p << "," << blockSize << "," << duration << "," <<
-              computeMatrixMultiplicationGFLOPS(n, m, p, duration) << "," << (evaluateOutputTime ? resultTimes[0] : 0.0) << "," << average;
+              computeMatrixMultiplicationGFLOPS(n, m, p, duration) << "," << (evaluateOutputTime ? resultTimes[0] : 0.0)
+              << "," << average;
 
     if constexpr (isTestResults) {
       std::cout << "," << std::boolalpha << isAccurate;
@@ -578,8 +595,14 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     std::cout << std::endl;
 
     matrixMultiplicationGraph
-        .createDotFile("AdvancedTutorial1-" + std::to_string(innerTraversal) + "-" + std::to_string(n) + "-" + std::to_string(blockSize) +  "-" + std::to_string(deviceIds.size()) + "-" + std::to_string(numberThreadProduct) + "-" + std::to_string(retryNum) +  ".dot", hh::ColorScheme::EXECUTION,
-                       hh::StructureOptions::QUEUE, hh::DebugOptions::NONE, true);
+        .createDotFile("AdvancedTutorial1-" + std::to_string(innerTraversal) + "-" + std::to_string(n) + "-"
+                           + std::to_string(blockSize) + "-" + std::to_string(deviceIds.size()) + "-"
+                           + std::to_string(numberThreadProduct) + "-" + std::to_string(retryNum) + ".dot",
+                       hh::ColorScheme::EXECUTION,
+                       hh::StructureOptions::QUEUE,
+                       hh::DebugOptions::NONE,
+                       std::make_unique<hh::JetColor>(),
+                       true);
 
     resultTimes.clear();
   }
@@ -590,17 +613,17 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 //  std::cout << "Avg: " << avgRuntime << ", " << computeMatrixMultiplicationGFLOPS(n, m, p, avgRuntime);
 
 
-  for (auto mat: aMatrixData) {
+  for (auto mat : aMatrixData) {
     checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), mat->blockSizeWidth()
-                                                                * mat->blockSizeHeight() * sizeof(MatrixType), cudaCpuDeviceId));
+        * mat->blockSizeHeight() * sizeof(MatrixType), cudaCpuDeviceId));
   }
 
-  for (auto mat: bMatrixData) {
+  for (auto mat : bMatrixData) {
     checkCudaErrors(cudaMemPrefetchAsync(mat->blockData(), mat->blockSizeWidth()
-                                                                * mat->blockSizeHeight() * sizeof(MatrixType), cudaCpuDeviceId));
+        * mat->blockSizeHeight() * sizeof(MatrixType), cudaCpuDeviceId));
   }
 
-  for (auto device :deviceIds) {
+  for (auto device : deviceIds) {
     checkCudaErrors(cudaSetDevice(device));
     checkCudaErrors(cudaDeviceSynchronize());
   }
@@ -620,13 +643,12 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     partialData->blockData(nullptr);
   }
 
-  for (auto device :deviceIds) {
+  for (auto device : deviceIds) {
     cudaSetDevice(device);
     checkCudaErrors(cublasShutdown());
   }
   return 0;
 }
-
 
 int main(int argc, char *argv[]) {
   return matrixMultiplicationWithUnifiedMemory(argc, argv);

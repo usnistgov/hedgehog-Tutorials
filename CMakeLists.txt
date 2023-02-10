@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.16)
 project(hedgehog_Tutorials)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
@@ -36,12 +36,14 @@ file(GLOB tclap_headers "../../../utils/tclap/*.h")
 # Add tutorials target
 add_subdirectory(tutorial1)
 add_subdirectory(tutorial2)
+add_subdirectory(tutorial3)
 if (OpenBLAS_FOUND)
-	add_subdirectory(tutorial3)
+	add_subdirectory(tutorial4)
 endif (OpenBLAS_FOUND)
 if (CUDA_FOUND)
-	add_subdirectory(tutorial4)
 	add_subdirectory(tutorial5)
-
+	add_subdirectory(tutorial6)
 	add_subdirectory(advanced/tutorial1)
 endif (CUDA_FOUND)
+add_subdirectory(tutorial7)
+add_subdirectory(tutorial8)
