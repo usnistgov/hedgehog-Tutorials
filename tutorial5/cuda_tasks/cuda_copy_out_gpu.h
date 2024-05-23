@@ -32,11 +32,11 @@ class CudaCopyOutGpu
  private:
   size_t blockSize_ = 0;
  public:
-  explicit CudaCopyOutGpu(size_t blockSize) : hh::AbstractCUDATask<
+  explicit CudaCopyOutGpu(size_t blockSize, size_t nbThreads = 1) : hh::AbstractCUDATask<
       1,
       CudaMatrixBlockData<MatrixType, 'p'>,
       MatrixBlockData<MatrixType, 'p', Order::Column>
-  >("Copy Out GPU", 1, false, false), blockSize_(blockSize) {}
+  >("Copy Out GPU", nbThreads, false, false), blockSize_(blockSize) {}
 
   void execute(std::shared_ptr<CudaMatrixBlockData<MatrixType, 'p'>> ptr) override {
     auto ret = ptr->copyToCPUMemory(this->stream());
@@ -48,7 +48,7 @@ class CudaCopyOutGpu
       1,
       CudaMatrixBlockData<MatrixType, 'p'>, MatrixBlockData<MatrixType, 'p', Order::Column>>
   > copy() override {
-    return std::make_shared<CudaCopyOutGpu>(this->blockSize_);
+    return std::make_shared<CudaCopyOutGpu>(this->blockSize_, this->numberThreads());
   }
 
 };

@@ -28,12 +28,10 @@ target_compile_definitions(tutorial5_matrix_multiplication_GPU_and_memory_manage
 
 target_link_libraries(tutorial5_matrix_multiplication_GPU_and_memory_management
 		${Hedgehog_LIBRARIES}
-		${CUDA_LIBRARIES}
-		cuda)
+		cuda
+		CUDA::cublas
+)
 
 target_include_directories(tutorial5_matrix_multiplication_GPU_and_memory_management PUBLIC
 		${Hedgehog_INCLUDE_DIR}
-		${CUDA_INCLUDE_DIRS})
-
-CUDA_ADD_CUBLAS_TO_TARGET(tutorial5_matrix_multiplication_GPU_and_memory_management)
-
+)

@@ -19,7 +19,7 @@
 
 #ifndef TUTORIAL5_CUDA_MATRIX_BLOCK_DATA_H
 #define TUTORIAL5_CUDA_MATRIX_BLOCK_DATA_H
-#include <cublas_v2.h>
+
 #include <hedgehog/hedgehog.h>
 #include <cuda_runtime_api.h>
 

@@ -239,7 +239,5 @@ int main(int argc, char **argv) {
   delete[] dataB;
   delete[] dataC;
 
-  // Shutdown cuBLAS
-  cublasShutdown();
   return 0;
 }

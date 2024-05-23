@@ -20,7 +20,7 @@
 #ifndef TUTORIAL6_CUDA_PRODUCT_TASK_H
 #define TUTORIAL6_CUDA_PRODUCT_TASK_H
 #include <cuda.h>
-#include <cublas.h>
+#include <cublas_v2.h>
 #include <hedgehog/hedgehog.h>
 #include "../data/cuda_matrix_block_data.h"
 

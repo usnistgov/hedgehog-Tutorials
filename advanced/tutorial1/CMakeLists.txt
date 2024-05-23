@@ -14,32 +14,13 @@ add_executable(advanced_tutorial1
         state/partial_computation_state.h
         state/partial_computation_state_manager.h)
 
-target_compile_definitions(advanced_tutorial1 PUBLIC
-        HH_USE_CUDA)
+target_compile_definitions(advanced_tutorial1 PUBLIC HH_USE_CUDA)
+target_link_libraries(advanced_tutorial1 ${Hedgehog_LIBRARIES} cuda CUDA::cublas)
+target_include_directories(advanced_tutorial1 PUBLIC ${Hedgehog_INCLUDE_DIR})
 
-target_link_libraries(advanced_tutorial1
-        ${Hedgehog_LIBRARIES}
-        ${CUDA_LIBRARIES}
-        cuda)
-
-target_include_directories(advanced_tutorial1 PUBLIC
-        ${Hedgehog_INCLUDE_DIR}
-        ${CUDA_INCLUDE_DIRS})
-
-CUDA_ADD_CUBLAS_TO_TARGET(advanced_tutorial1)
-
-
-add_executable(advanced_tutorial1_baseline
-        tutorial1-baseline.cc)
-
-target_link_libraries(advanced_tutorial1_baseline
-        ${CUDA_LIBRARIES}
-        cuda)
-
-target_include_directories(advanced_tutorial1_baseline PUBLIC
-        ${CUDA_INCLUDE_DIRS})
-
-CUDA_ADD_CUBLAS_TO_TARGET(advanced_tutorial1_baseline)
+add_executable(advanced_tutorial1_baseline tutorial1-baseline.cc)
+target_link_libraries(advanced_tutorial1_baseline cuda CUDA::cublas)
+target_include_directories(advanced_tutorial1_baseline PUBLIC ${Hedgehog_INCLUDE_DIR})
 
 if (NVTX_FOUND)
     target_include_directories(advanced_tutorial1 PUBLIC ${NVTX_INCLUDE_DIR})

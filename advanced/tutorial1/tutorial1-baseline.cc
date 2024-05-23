@@ -1,8 +1,6 @@
-#include <memory>
 #include <chrono>
 #include <algorithm>
 #include <iostream>
-#include <cublas.h>
 #include <cublasXt.h>
 #include <random>
 #include "../../utils/tclap/CmdLine.h"
@@ -76,6 +74,7 @@ int main(int argc, char *argv[]) {
       deviceIds = {};
 
   std::vector<double> runtimes;
+  std::vector<cublasHandle_t> handles;
 
   // Allocate matrices
   // test matrices
@@ -124,7 +123,8 @@ int main(int argc, char *argv[]) {
   for (auto device :deviceIds)
   {
     cudaSetDevice(device);
-    checkCudaErrors(cublasInit());
+    handles.emplace_back();
+    checkCudaErrors(cublasCreate(&handles.back()));
   }
 
   testA = new MatrixType[m * n];
@@ -190,10 +190,9 @@ int main(int argc, char *argv[]) {
   delete [] testResult;
 
 
-  for (auto device :deviceIds)
-  {
+  for (auto device :deviceIds){
     cudaSetDevice(device);
-    checkCudaErrors(cublasShutdown());
+    checkCudaErrors(cublasDestroy(handles.at(device)));
   }
 
 

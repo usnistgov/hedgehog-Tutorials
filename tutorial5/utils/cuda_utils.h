@@ -21,7 +21,6 @@
 #define TUTORIAL5_CUDA_UTILS_H
 
 #include <iostream>
-#include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 
 // Utils macro to convert row based intex to column based

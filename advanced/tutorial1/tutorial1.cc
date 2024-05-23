@@ -194,6 +194,9 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
       *testResult,
       *testHedgehog;
 
+
+  cublasHandle_t handle;
+
   try {
     TCLAP::CmdLine cmd("Matrix Multiplication parameters", ' ', "0.1");
     SizeConstraint sc;
@@ -250,7 +253,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
   for (auto device : deviceIds) {
     checkCudaErrors(cudaSetDevice(device));
-    checkCudaErrors(cublasInit());
+    checkCudaErrors(cublasCreate(&handle));
   }
 
   nBlocks = std::ceil(n / blockSize) + (n % blockSize == 0 ? 0 : 1),
@@ -525,22 +528,22 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
         std::cout << std::endl;
       }
 
-      cublasXtHandle_t handle;
-      checkCudaErrors(cublasXtCreate(&handle));
+      cublasXtHandle_t handleTest;
+      checkCudaErrors(cublasXtCreate(&handleTest));
 
-      checkCudaErrors(cublasXtDeviceSelect(handle, deviceIds.size(), deviceIds.data()));
-      checkCudaErrors(cublasXtSetBlockDim(handle, blockSize));
+      checkCudaErrors(cublasXtDeviceSelect(handleTest, deviceIds.size(), deviceIds.data()));
+      checkCudaErrors(cublasXtSetBlockDim(handleTest, blockSize));
 
       MatrixType alpha = 1.0, beta = 1.0;
 
       if constexpr (std::is_same<MatrixType, double>::value) {
-        checkCudaErrors(cublasXtDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+        checkCudaErrors(cublasXtDgemm(handleTest, CUBLAS_OP_N, CUBLAS_OP_N,
                                       n, p, m, (double *) (&alpha),
                                       (double *) testA, n,
                                       (double *) testB, m,
                                       (double *) (&beta), (double *) testResult, n));
       } else {
-        checkCudaErrors(cublasXtSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+        checkCudaErrors(cublasXtSgemm(handleTest, CUBLAS_OP_N, CUBLAS_OP_N,
                                       n, p, m, (float *) (&alpha),
                                       (float *) testA, n,
                                       (float *) testB, m,
@@ -548,7 +551,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
       }
 
       checkCudaErrors(cudaDeviceSynchronize());
-      checkCudaErrors(cublasXtDestroy(handle));
+      checkCudaErrors(cublasXtDestroy(handleTest));
 
       if constexpr (doDebugPrintMatrices) {
         std::cout << "Test Final Results:" << std::endl;
@@ -600,6 +603,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
                            + std::to_string(numberThreadProduct) + "-" + std::to_string(retryNum) + ".dot",
                        hh::ColorScheme::EXECUTION,
                        hh::StructureOptions::QUEUE,
+                       hh::InputOptions::SEPARATED,
                        hh::DebugOptions::NONE,
                        std::make_unique<hh::JetColor>(),
                        true);
@@ -645,7 +649,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
   for (auto device : deviceIds) {
     cudaSetDevice(device);
-    checkCudaErrors(cublasShutdown());
+    checkCudaErrors(cublasDestroy(handle));
   }
   return 0;
 }

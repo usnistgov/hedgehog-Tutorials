@@ -1,10 +1,13 @@
 #include <utility>
+#include <hedgehog/hedgehog.h>
 
 #include "graph/graph_c_int_c_int.h"
 #include "graph/graph_int_int.h"
 #include "task/task_c_int_c_int.h"
 #include "task/task_int_int.h"
 #include "task/task_int_int_with_can_terminate.h"
+
+#if (defined(HH_ENABLE_HH_CX))
 
 #if  (defined(__cpp_lib_constexpr_vector) && defined(__cpp_lib_constexpr_string))
 
@@ -295,3 +298,11 @@ int main () {
 }
 
 #endif // (defined(__cpp_lib_constexpr_vector) && defined(__cpp_lib_constexpr_string))
+
+#else // (defined(HH_ENABLE_HH_CX))
+
+int main () {
+  std::cout << "The compile-time analysis has not been activated, Hedgehog needs to be compiled with the HH_CX CMAKE option" << std::endl;
+}
+
+#endif // (defined(HH_ENABLE_HH_CX))

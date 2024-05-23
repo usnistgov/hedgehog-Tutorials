@@ -32,12 +32,10 @@ target_compile_definitions(tutorial6_matrix_multiplication_Multi_GPU PUBLIC
 
 target_link_libraries(tutorial6_matrix_multiplication_Multi_GPU
 		${Hedgehog_LIBRARIES}
-		${CUDA_LIBRARIES}
-		cuda)
+		cuda
+		CUDA::cublas
+)
 
 target_include_directories(tutorial6_matrix_multiplication_Multi_GPU PUBLIC
 		${Hedgehog_INCLUDE_DIR}
-		${CUDA_INCLUDE_DIRS})
-
-CUDA_ADD_CUBLAS_TO_TARGET(tutorial6_matrix_multiplication_Multi_GPU)
-
+)
