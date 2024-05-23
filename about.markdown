@@ -20,9 +20,7 @@ Loïc Yon
 
 Mary Brady
 
-# Contact Us
-
-<a target="_blank" href="mailto:a.bardakoff@prometheuscomputing.com">Alexandre Bardakoff (a.bardakoff ( at ) prometheuscomputing.com)</a>
+# Contact us
 
 <a target="_blank" href="mailto:timothy.blattner@nist.gov">Timothy Blattner (timothy.blattner ( at ) nist.gov)</a>
 
