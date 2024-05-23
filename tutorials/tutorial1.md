@@ -109,6 +109,21 @@ auto hadamardProduct = std::make_shared<HadamardProduct<MatrixType, Ord>>("Hadam
 A *shared_ptr* is created to operate within Hedgehog and ensure that memory is reclaimed to avoid leaks. 
 
 ----
+# Other types of Tasks
+By default the *hh::AbstractTask* is using mutexes to protect its datastructure (i.e. input queues), to sleep when there is no work to do, or to wakeup when there is at least one data available. 
+We have added other types of CPU tasks using atomics instead of mutexes for either the queues, the communication layer, or both. 
+
+For all of them, the communication layer (sleep/wakeup mechanism) is made with a *std::atomic_flag* that the thread will wait on when no data is available. When a data arrives, the flag is notified and the task can resume its execution. 
+
+| **Type of tasks**             | **Queue**                                                                                                                                                                                                         |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **hh::AbstractMixedTask**         | std::queue protected with a std::mutex.                                                                                                                                                                            |
+| **hh::AbstractAtomicTask**        | Queue implemented with a simple linked list, where the head and tail are atomic values. It cannot store nullptr, because it is used as default empty node value.                                                  |
+| **hh::AbstractLimitedAtomicTask** | Queue implemented with a ring buffer with a *limited* capacity. So store can fails (returns false) if the queue is full. During its lifetime it can store at most std::numeric_limits\<long long\>::max() elements. |
+
+These other tasks can be derived like *hh::AbstractTask* and behave exactly the same way. They also may offer better performance depending on the kind of computer architecture the end-user is targeting. 
+
+----
 
 # Graph
 The Hedgehog *Graph* is used to connect nodes together to form a dataflow. The nodes are connected through thread-safe queues that hold data inputs for a task.  
@@ -139,7 +154,6 @@ graphHadamard.input<TripletMatrixBlockData<MatrixType, Ord>>(hadamardProduct);
 graphHadamard.output<MatrixBlockData<MatrixType, 'c', Ord>>(hadamardProduct);
 ```
 but because in this case we connect the task as input and output of the graph for all common types respectively, we don't need to do each connection.
-
 
 Once the graph is set, the graph can be executed. The function *executeGraph* is called to spawn the threads. After this call, the graph is ready to accept input data:
 ```cpp

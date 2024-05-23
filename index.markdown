@@ -19,8 +19,8 @@ The source code for the tutorials can be found [Here](https://github.com/usnistg
 cmake -DHedgehog_INCLUDE_DIR=<dir>
 {% endhighlight %}
 
-- Tutorial 3 requires <a href="http://www.openblas.net/" rel="external">OpenBLAS </a>
-- Tutorial 4 and 5 require <a href="https://developer.nvidia.com/cuda-zone" rel="external">CUDA </a>.
+- Tutorial 4 requires <a href="http://www.openblas.net/" rel="external">OpenBLAS </a>
+- Tutorial 5 and 6 require <a href="https://developer.nvidia.com/cuda-zone" rel="external">CUDA </a>.
 
 <a href="http://tclap.sourceforge.net/" rel="external">TCLAP</a> is used and is embedded in the repository to parse the command of the
  different tutorials.
@@ -32,6 +32,8 @@ Tested Compilers:
 - g++ 11.1+
 - clang 10
 - MSVC 14.33
+
+For the static analysis (hh_cx) a compiler with the constexpr std::vector (P1004R2) and constexpr std::string (P0980R1) is needed, tested with gcc 12.1.0+.
 
 To use the Hedgehog API include the following header file:
 ```
@@ -47,6 +49,7 @@ The tutorials are meant to demonstrate the usage of the Hedgehog API, and are no
 - [Tutorial 5 - GPU Computation and memory management: GPU Matrix Multiplication](tutorials/tutorial5.html)
 - [Tutorial 6 - MultiGPU Computation and graph bunble: GPU Matrix Multiplication](tutorials/tutorial6.html)
 - [Tutorial 7 - Compile-time analysis](tutorials/tutorial7.html)
+- [Tutorial 8 - Hedgehog extension](tutorials/tutorial8.html)
 - [Profiling tools in Hedgehog](tutorials/y_profiling.html)
 - [Moving from Hedgehog v.2 to v.3](tutorials/z_hh2tohh3.html)
 
@@ -64,9 +67,7 @@ Loïc Yon
 
 Mary Brady
 
-# Contact Us
-
-<a target="_blank" href="mailto:alexandre.bardakoff@nist.gov">Alexandre Bardakoff (alexandre.bardakoff ( at ) nist.gov)</a>
+# Contact us
 
 <a target="_blank" href="mailto:timothy.blattner@nist.gov">Timothy Blattner (timothy.blattner ( at ) nist.gov)</a>
 

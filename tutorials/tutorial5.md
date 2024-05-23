@@ -144,8 +144,8 @@ StaticMemoryManager<House, size_t, size_t > smm(42, 98, 1);
 All the *memory managers* come with a recycling mechanism. 
 When ManagedMemory::returnToMemoryManager() is invoked, the recycling mechanism is used which consists of calling the following virtual methods, in the following order:
 1. ManagedMemory::postProcess(): Mechanism called by Hedgehog when the node returns the memory before it is tested for being recycled (for example in the case the ManagedMemory is returned to the MemoryManager multiple times before being recycled (based on return of canBeRecycled) and sent back to the Pool).
-3. ManagedMemory::canBeRecycled(): Boolean method to determine if the ManagedMemory can be recycled, and sent back to the Pool.
-4. ManagedMemory::clean(): Recycle the ManagedMemory. The data given by the *MemoryManager* is default constructed the first time. If specialized class attributes are allocated, they should be deallocated in this method, to avoid memory leaks, to return the ManagedMemory to the same state as default construction. 
+2. ManagedMemory::canBeRecycled(): Boolean method to determine if the ManagedMemory can be recycled, and sent back to the Pool.
+3. ManagedMemory::clean(): Recycle the ManagedMemory. The data given by the *MemoryManager* is default constructed the first time. If specialized class attributes are allocated, they should be deallocated in this method, to avoid memory leaks, to return the ManagedMemory to the same state as default construction. 
 
 The same behavior, is used by the *StaticMemoryManager*, only, no other allocation *should* be made by the user, so ManagedMemory::clean() can be used to clean the data if needed to be reused later on. 
 The *managed memory* will be deallocated during the pool destruction by calling the destructor of the specialed ManagedMemory. Therefore, any memory allocated within constructors that are used by the *StaticMemoryManager* should be properly deallocated in their destructor.
@@ -301,7 +301,7 @@ The other tasks, and state managers are reused from [tutorial 4]({{site.url}}/tu
 # Graph
 
 Here is the final graph:
-![Tutoriel5Graph](img/Tutorial5MatrixMultiplicationCycle.png "Tutorial 4 Matrix Multiplication on NVIDIA GPU with memory management")
+![Tutoriel5Graph](img/Tutorial5MatrixMultiplicationCycle.png "Tutorial 5 Matrix Multiplication on NVIDIA GPU with memory management")
 
 ----
 

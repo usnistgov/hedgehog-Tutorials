@@ -130,7 +130,7 @@ When a pair is produced it is sent to the *Addition Task* for accumulation, and 
 # Graph
 Hedgehog presents and uses a directed graph. Which means, that cycles are possible and without special care will end in deadlock. 
 This is because a node, by default, will terminate if these two conditions are true:
-1: Are there no "input nodes" (nodes that send data to the considerate nodes) alive ?
+1: Are there no "input nodes" (nodes that send data to the considered nodes) alive ?
 2: Are all the input data queues empty ?
 
 Because of the cycle, it's possible there is no data in the input queues, but for each of them one of their "input nodes" may be alive.

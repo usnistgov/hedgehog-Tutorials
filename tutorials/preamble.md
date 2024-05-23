@@ -36,7 +36,7 @@ If a node has multiple successors for a type, the *std::shared_ptr* is copied to
 
 Hedgehog's dataflow graphs can be created in many different ways and allow cycles. However, cycles must be handled with care, as presented in [Tutorial 4 - Cycle resolution: CPU Matrix Multiplication](tutorial4.html).
 
-The creation of such graphs in Hedgehog and its various abstractions are covered in detail within these [https://github.com/ABardakoff/New_Hedgehog_tutorials](tutorials).
+The creation of such graphs in Hedgehog and its various abstractions are covered in detail within these tutorials.
 
 Other conceptual differences between Hedgehog and other libraries are highlighted in this [section](#main-differences-with-a-task-graph-model).
 
@@ -148,3 +148,4 @@ We have designed the tutorials to give a progressive explanations on the differe
 - [Tutorial 5]({{site.url}}/tutorials/tutorial5) presents *GPU computation* on NVIDIA GPUs. 
 - [Tutorial 6]({{site.url}}/tutorials/tutorial6) extends the previous tutorial by porting it to multiple-GPUs with an *execution pipeline* and using *graph composition*.
 - [Tutorial 7]({{site.url}}/tutorials/tutorial7) exposes the compile-time analysis tool library.
+- [Tutorial 8]({{site.url}}/tutorials/tutorial8) demonstrate how Hedgehog can be extended.

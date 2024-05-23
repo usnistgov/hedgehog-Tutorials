@@ -144,10 +144,13 @@ We can use these different bridges to customize the implementation of this abstr
 
 For example, if we want to use a priority queue instead of a normal queue we can customize the implementation of the receiver: 
 ```cpp
-template<class Input>
+template<class Input> requires std::totally_ordered<Input>
 class PriorityQueueReceiver : public hh::core::implementor::ImplementorReceiver<Input> {
  private:
-  std::unique_ptr<std::priority_queue<std::shared_ptr<Input>>> const
+  struct CustomSharedInputGreater {bool operator()(auto const & lhs, auto const & rhs) { return *lhs > *rhs;} } ;
+  using QueueType = std::priority_queue<std::shared_ptr<Input>, std::vector<std::shared_ptr<Input>>, CustomSharedInputGreater>;
+
+  std::unique_ptr<QueueType> const
       queue_ = nullptr; ///< Queue storing to be processed data
 
   std::unique_ptr<std::set<hh::core::abstraction::SenderAbstraction<Input> *>> const
@@ -156,36 +159,51 @@ class PriorityQueueReceiver : public hh::core::implementor::ImplementorReceiver<
   size_t
       maxSize_ = 0; ///< Maximum size attained by the queue
 
+  std::mutex
+      queueMutex_{},
+      sendersMutex_{};
  public:
   explicit PriorityQueueReceiver()
-      : queue_(std::make_unique<std::priority_queue<std::shared_ptr<Input>>>()),
+      : queue_(std::make_unique<QueueType>()),
         senders_(std::make_unique<std::set<hh::core::abstraction::SenderAbstraction<Input> *>>()) {}
+
   virtual ~PriorityQueueReceiver() = default;
-  void receive(std::shared_ptr<Input> const data) final {
+  bool receive(std::shared_ptr<Input> data) final {
+    std::lock_guard<std::mutex> lck(queueMutex_);
     queue_->push(data);
     maxSize_ = std::max(queue_->size(), maxSize_);
+    return true;
   }
-  [[nodiscard]] std::shared_ptr<Input> getInputData() override {
+  [[nodiscard]] bool getInputData(std::shared_ptr<Input> &data) override {
+    std::lock_guard<std::mutex> lck(queueMutex_);
     assert(!queue_->empty());
-    auto front = queue_->top();
+    data = queue_->top();
     queue_->pop();
-    return front;
+    return true;
   }
-  [[nodiscard]] size_t numberElementsReceived() const override { return queue_->size(); }
+  [[nodiscard]] size_t numberElementsReceived() override {
+    std::lock_guard<std::mutex> lck(queueMutex_);
+    return queue_->size();
+  }
   [[nodiscard]] size_t maxNumberElementsReceived() const override { return maxSize_; }
-  [[nodiscard]] bool empty() const override { return queue_->empty(); }
+
+  [[nodiscard]] bool empty() override {
+    std::lock_guard<std::mutex> lck(queueMutex_);
+    return queue_->empty();
+  }
+
   [[nodiscard]] std::set<hh::core::abstraction::SenderAbstraction<Input> *> const &connectedSenders() const override {
     return *senders_;
   }
-  void addSender(hh::core::abstraction::SenderAbstraction<Input> *const sender) override { senders_->insert(sender); }
-  void removeSender(hh::core::abstraction::SenderAbstraction<Input> *const sender) override { senders_->erase(sender); }
-};
+  void addSender(hh::core::abstraction::SenderAbstraction<Input> *const sender) override {
+    std::lock_guard<std::mutex> lck(sendersMutex_);
+    senders_->insert(sender);
+  }
 
-template<class ...Inputs>
-class MultiPriorityQueueReceivers : public PriorityQueueReceiver<Inputs> ... {
- public:
-  explicit MultiPriorityQueueReceivers() : PriorityQueueReceiver<Inputs>()... {}
-  ~MultiPriorityQueueReceivers() override = default;
+  void removeSender(hh::core::abstraction::SenderAbstraction<Input> *const sender) override {
+    std::lock_guard<std::mutex> lck(sendersMutex_);
+    senders_->erase(sender);
+  }
 };
 ```
 
@@ -309,17 +327,18 @@ To create a new core and API it suffices to create your classes by inheriting fr
   - NodeAbstraction: Base node definition
   - GraphNodeAbstraction: Base graph definition
   - TaskNodeAbstraction: Base task definition
+  - StateManagerNodeAbstraction: Base state manager definition
   - ExecutionPipelineNodeAbstraction:Base Execution pipeline definition
   - NotifierAbstraction: Sending message notification abstraction
   - SlotAbstraction: Receiving message notification abstraction
   - ReceiverAbstraction: Receiving data abstraction
   - SenderAbstraction: Sending data abstraction
   - ClonableAbstraction: Clonable abstraction for duplicating a node when creating clone graph in an execution pipeline
-  - GroupableAbstraction: Groupable abstraction to duplicate a node to form a group
-  - CanTerminateAbstraction: Interface for calling API nodes that can redefine the canTerminate method
+  - [Any]GroupableAbstraction: Groupable abstraction to duplicate a node to form a group (one abstraction is templatized)
   - CleanableAbstraction: Interface for calling API nodes that can redefine the clean method
   - CopyableAbstraction: Interface for calling API nodes that can redefine the copy method
   - ExecutionAbstraction: Interface for calling API nodes that can redefine the execute method
+  - PrintableAbstraction: Interface used to determine if the node should be visited by the printer and colored
 - For the API: 
   - MultiReceivers: Allows for a node to have the info to receive multiple types of data
   - MultiSenders: Allows for a node to have the info to send multiple types of data

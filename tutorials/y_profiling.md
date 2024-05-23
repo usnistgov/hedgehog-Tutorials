@@ -29,9 +29,10 @@ It is invoked through the graph method:
 ```cpp
 void createDotFile(
     std::filesystem::path const &dotFilePath, // Path to the file to create
-    ColorScheme colorScheme = ColorScheme::NONE, // Representation color scheme
-    StructureOptions structureOptions = StructureOptions::NONE, // Representation structure option 
-    DebugOptions debugOption = DebugOptions::NONE, // Representation debug option
+    ColorScheme colorScheme = ColorScheme::NONE, // Color scheme selection
+    StructureOptions structureOptions = StructureOptions::NONE, // Graph structure option 
+    InputOptions inputOption = InputOptions::GATHERED, // Input presentation option
+    DebugOptions debugOption = DebugOptions::NONE, // Debug option
     std::unique_ptr<ColorPicker> colorPicker = std::make_unique<JetColor>(), // Color picker
     bool verbose = false // Verbose flag
 );
@@ -50,6 +51,9 @@ Here are the function parameters and their options:
     - hh::StructureOptions::THREADING: Present all the nodes in a group with different nodes.
     - hh::StructureOptions::QUEUE: Present extra information on the queue (number of elements in the queue / maximum queue size during the execution).
     - hh::StructureOptions::ALL: Combination of hh::StructureOptions::THREADING and hh::StructureOptions::QUEUE.
+  - Input options: Shows if the metrics are presented per input type or with all the input types gathered
+    - hh::InputOptions::GATHERED: Present the execution time for all input type gathered
+    - hh::InputOptions::SEPARATED: Shows the time per input type
   - debugOption: Add information for debugging purpose. It could be:
     - hh::DebugOptions::NONE: Default presentation, no extra information added.
     - hh::DebugOptions::ALL: Shows debug information such as pointer addresses for nodes and edges.
