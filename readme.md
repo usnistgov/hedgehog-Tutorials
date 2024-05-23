@@ -14,30 +14,17 @@ In this repository we present the tutorials for the [Hedgehog API](https://githu
 Detailed explanations about the tutorials can be found in this [website](https://pages.nist.gov/hedgehog-Tutorials/). 
 
 ## Dependencies
-- All tutorials depends on the [Hedgehog](https://github.com/usnistgov/hedgehog) library, location is specified by using: 
+- All tutorials depend on the [Hedgehog](https://github.com/usnistgov/hedgehog) library, location is specified by using: 
 ``` cmake
 cmake -DHedgehog_INCLUDE_DIR=<dir>
 ```
-The tutorials presented here need to be compiled with a C++ compiler compatible with C++17 with the standard filesystem library accessible. 
-
-Tested Compilers and Debuggers:
-- Linux
-  + g++ 8.3.0
-  + GDB 8.3
-- Windows: 
-  + cl.exe 19.23 (MSVC 14.23.28105)
-  + GDB 8.30
-- macOS 10.15
-  + g++ 8.3.0
-  + GDB 8.0.1
-  + LLDB 7.0.1
-  
-For a custom GDB, [CLion](https://www.jetbrains.com/clion/) supports version 7.8.x-8.3.x
+The tutorials presented here need to be compiled with a C++ compiler compatible with C++20.
 
 Libraries/tools:
-- cmake 3.12+ is recommended for building the tutorials.
-- Tutorial 3 requires [OpenBlas](http://www.openblas.net/).
-- Tutorial 4 requires [CUDA](https://developer.nvidia.com/cuda-zone).
+- cmake 3.16+ is recommended for building the tutorials.
+- Tutorial 4 requires [OpenBlas](http://www.openblas.net/).
+- Tutorials 5 and 6 require [CUDA](https://developer.nvidia.com/cuda-zone).
+- Tutorial 7 requires gcc 12.1.0 + (Hedgehog static analysis requires a compiler with the constexpr std::vector (P1004R2) and constexpr std::string (P0980R1))
 
 [TCLAP](http://tclap.sourceforge.net/) is used and is embedded in the repository to parse the command-line of the
  different tutorials. 
@@ -66,9 +53,7 @@ Loïc Yon
 
 Mary Brady
 
-## Contact Us
-
-<a target="_blank" href="mailto:alexandre.bardakoff@nist.gov">Alexandre Bardakoff (alexandre.bardakoff ( at ) nist.gov)</a>
+## Contact us
 
 <a target="_blank" href="mailto:timothy.blattner@nist.gov">Timothy Blattner (timothy.blattner ( at ) nist.gov)</a>
 
