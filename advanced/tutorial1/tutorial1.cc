@@ -369,7 +369,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
 
   if (!ignoreHeader) {
       std::cout << "experiment,numGPUs,numThreadsProduct,numThreadsAddition,n,m,p,blockSize,time(s),gflops,first,avg";
-      
+
       if constexpr (isTestResults) {
           std::cout << ",accurate";
       }
@@ -613,7 +613,7 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
                        hh::InputOptions::SEPARATED,
                        hh::DebugOptions::NONE,
                        std::make_unique<hh::JetColor>(),
-                       true);
+                       false);
 
     resultTimes.clear();
   }
