@@ -647,9 +647,11 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     partialData->blockData(nullptr);
   }
 
-  for (auto device : deviceIds) {
-    cudaSetDevice(device);
-    checkCudaErrors(cublasDestroy(handle));
+  if constexpr (isTestResults) {
+      for (auto device: deviceIds) {
+          cudaSetDevice(device);
+          checkCudaErrors(cublasDestroy(handle));
+      }
   }
   return 0;
 }
