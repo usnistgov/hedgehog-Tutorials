@@ -173,7 +173,8 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
   bool
       innerTraversal = false,
       restrictInputMemory = true,
-      evaluateOutputTime = false;
+      evaluateOutputTime = false,
+      ignoreHeader = false;
 
   std::vector<double>
       resultTimes = {};
@@ -223,7 +224,9 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     TCLAP::SwitchArg
         evaluateOutputTimeArg("o", "output-time", "Evaluates the output timing for first and average.", false);
     cmd.add(evaluateOutputTimeArg);
-
+    TCLAP::SwitchArg
+        ignoreHeaderArg("z", "ignore-header", "Whether to print the header for the CSV output or not.", false);
+    cmd.add(ignoreHeaderArg);
     cmd.parse(argc, argv);
 
     n = nArg.getValue();
@@ -234,6 +237,8 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     numRetry = retryArg.getValue();
     innerTraversal = traversalArg.getValue();
     evaluateOutputTime = evaluateOutputTimeArg.getValue();
+    ignoreHeader = ignoreHeaderArg.getValue();
+
 
     restrictInputMemory = !innerTraversal;
 
@@ -362,12 +367,14 @@ int matrixMultiplicationWithUnifiedMemory(int argc, char **argv) {
     }
   }
 
-  std::cout << "experiment,numGPUs,numThreadsProduct,numThreadsAddition,n,m,p,blockSize,time(s),gflops,first,avg";
-
-  if constexpr (isTestResults) {
-    std::cout << ",accurate";
+  if (!ignoreHeader) {
+      std::cout << "experiment,numGPUs,numThreadsProduct,numThreadsAddition,n,m,p,blockSize,time(s),gflops,first,avg";
+      
+      if constexpr (isTestResults) {
+          std::cout << ",accurate";
+      }
+      std::cout << std::endl;
   }
-  std::cout << std::endl;
 
   for (size_t retryNum = 0; retryNum < numRetry; ++retryNum) {
     for (auto mat : aMatrixData) {
